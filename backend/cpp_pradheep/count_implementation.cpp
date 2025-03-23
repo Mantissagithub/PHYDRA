@@ -7,7 +7,7 @@
 #include <climits>
 
 using namespace std;
-
+using nlohmann::json;
 struct Zone {
     tuple<int, int, int> dimensions;
     vector<string> containers_id;
@@ -18,7 +18,7 @@ struct Zone {
 
 unordered_map<string, Zone> zones;
 
-void main(){
+int main(){
     cout<<"Implementing count implementation..."<<endl;
 
     string json_data = R"(
@@ -39,4 +39,5 @@ void main(){
     for(auto& zone : zones){
         cout<<zone.first<<" : "<<zone.second.count<<endl;
     }
+    return 0;
 }
