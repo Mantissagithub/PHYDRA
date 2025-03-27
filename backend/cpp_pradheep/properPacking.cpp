@@ -32,7 +32,7 @@ struct rowInContainers{
 unordered_map<int, rowInContainers> rows;
 unordered_map<int, Item> items;
 
-void insertItem(Item item, unordered_map<int, rowInContainers> rows){
+void insertItem(Item item, unordered_map<int, rowInContainers>& rows){
     int h = get<0>(item.dimensions);
     int w = get<1>(item.dimensions);
     int d = get<2>(item.dimensions);
@@ -108,8 +108,8 @@ int main(){
     Item item1 = {"Item1", make_tuple(2, 2, 2), 1, "2025-12-31", 10, "ZoneA", "ZoneB"};
     Item item2 = {"Item2", make_tuple(3, 3, 3), 2, "2025-12-31", 5, "ZoneA", "ZoneB"};
 
-    insertItem(item1, rows);
     insertItem(item2, rows);
+    insertItem(item1, rows);
 
     return 0;
 }
