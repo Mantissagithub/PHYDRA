@@ -7,7 +7,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <unordered_map>
-
+#include <climits>
 using namespace std;
 
 struct Item;
@@ -34,6 +34,7 @@ struct Item {
     string preferredZone;
     string containerId;
     string wasteReason;
+    Item(){}
     
     struct Position {
         int x, y, z;
@@ -75,7 +76,7 @@ struct Container {
     string id;
     string zone;
     int width, depth, height;
-    
+    Container(){}
     Container(string _id, string _zone, int w, int d, int h) 
         : id(_id), zone(_zone), width(w), depth(d), height(h) {}
     

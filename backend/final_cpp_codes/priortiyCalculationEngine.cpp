@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <queue>
 #include <unordered_map>
-
+#include <ctype.h>
 using namespace std;
 
 class PriorityCalculator {
@@ -44,7 +44,7 @@ private:
         currentDate.tm_year -= 1900; 
         currentDate.tm_mon -= 1;  
         auto current_tm = currentDate;
-        auto now = std::chrono::system_clock::from_time_t(std::mktime(&current_tm));
+        now = std::chrono::system_clock::from_time_t(std::mktime(&current_tm));
         
         return std::chrono::duration_cast<std::chrono::hours>(expiry - now).count() / 24;
     }
@@ -129,7 +129,7 @@ public:
     std::string itemType;
     std::string currentZone;
     double priorityScore;
-
+    Item(){}
     Item(std::string id, std::string name, int w, int d, int h, double m, 
          int p, std::string exp, int usage, std::string pZone, std::string type)
         : id(id), name(name), width(w), depth(d), height(h), mass(m),

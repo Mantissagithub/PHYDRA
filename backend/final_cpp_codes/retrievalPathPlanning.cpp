@@ -39,7 +39,9 @@ struct Item {
     string name;
     Position position;
     int width, depth, height;
-    
+    Item(){
+        
+    }
     Item(string _id, string _name, Position _pos, int w, int d, int h)
         : id(_id), name(_name), position(_pos), width(w), depth(d), height(h) {}
     
@@ -59,6 +61,10 @@ struct Container {
     string zone;
     int width, depth, height;
     vector<Item> items;
+
+    Container(){
+
+    }
     
     Container(string _id, string _zone, int w, int d, int h)
         : id(_id), zone(_zone), width(w), depth(d), height(h) {}
