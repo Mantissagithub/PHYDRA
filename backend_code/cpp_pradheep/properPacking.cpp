@@ -105,11 +105,15 @@ void insertItem(Item item, unordered_map<int, rowInContainers>& rows){
 
 int main(){
     // Example usage
-    Item item1 = {"Item1", make_tuple(2, 2, 2), 1, "2025-12-31", 10, "ZoneA", "ZoneB"};
+    Item item1 = {"Item1", make_tuple(3, 3, 3), 2, "2025-12-31", 5, "ZoneA", "ZoneB"};
     Item item2 = {"Item2", make_tuple(3, 3, 3), 2, "2025-12-31", 5, "ZoneA", "ZoneB"};
+    Item item3 = {"Item3", make_tuple(2, 2, 2), 1, "2025-12-31", 10, "ZoneA", "ZoneB"};
+    Item item4 = {"Item4", make_tuple(1,1,1), 2, "2025-12-31", 5, "ZoneA", "ZoneB"};
 
-    insertItem(item2, rows);
     insertItem(item1, rows);
+    insertItem(item2, rows);
+    insertItem(item3, rows);
+    insertItem(item4, rows);
 
     return 0;
 }

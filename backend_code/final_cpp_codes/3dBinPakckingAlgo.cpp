@@ -282,60 +282,25 @@ vector<Placement> packItems(const vector<Item>& items, const vector<Container>& 
 }
 
 int main() {
-    int noContainers;
-    cout<<"Enter Number of Containers";
-    cin>>noContainers;
-
-    vector<Container> containers;
-    for(int i = 0; i < noContainers; i++) {
-        string id, zone;
-        int width, depth, height;
-        
-        cout << "Enter Container " << i+1 << " ID: ";
-        cin >> id;
-        cout << "Enter Container " << i+1 << " Zone: ";
-        cin.ignore(); 
-        getline(cin, zone);
-        cout << "Enter Container " << i+1 << " Width: ";
-        cin >> width;
-        cout << "Enter Container " << i+1 << " Depth: ";
-        cin >> depth;
-        cout << "Enter Container " << i+1 << " Height: ";
-        cin >> height;
-        
-        containers.push_back(Container(id, zone, width, depth, height));
-    }
-    int noItems;
-    cout<<"Enter Number of Items";
-    cin>>noItems;
-    vector<Item> items;
-    for(int i = 0; i < noItems; i++) {
-        string id, name, expiryDate, preferredZone;
-        int width, depth, height, priority, usageLimit;
-        
-        cout << "Enter Item " << i+1 << " ID: ";
-        cin >> id;
-        cout << "Enter Item " << i+1 << " Name: ";
-        cin.ignore();
-        getline(cin, name);
-        cout << "Enter Item " << i+1 << " Width: ";
-        cin >> width;
-        cout << "Enter Item " << i+1 << " Depth: ";
-        cin >> depth;
-        cout << "Enter Item " << i+1 << " Height: ";
-        cin >> height;
-        cout << "Enter Item " << i+1 << " Priority (0-100): ";
-        cin >> priority;
-        cout << "Enter Item " << i+1 << " Expiry Date (YYYY-MM-DD): ";
-        cin >> expiryDate;
-        cout << "Enter Item " << i+1 << " Usage Limit: ";
-        cin >> usageLimit;
-        cout << "Enter Item " << i+1 << " Preferred Zone: ";
-        cin.ignore();
-        getline(cin, preferredZone);
-        
-        items.push_back(Item(id, name, width, depth, height, priority, expiryDate, usageLimit, preferredZone));
-    }
+    vector<Container> containers = {
+        Container("contA", "Crew Quarters", 100, 85, 200),
+        Container("contB", "Airlock", 50, 85, 200),
+        Container("contC", "Medical Bay", 80, 70, 150),
+        Container("contD", "Storage", 120, 100, 250)
+    };
+    
+    vector<Item> items = {
+        Item("001", "Food Packet", 10, 10, 20, 80, "2025-05-20", 30, "Crew Quarters"),
+        Item("002", "Oxygen Cylinder", 15, 15, 50, 95, "2025-12-31", 100, "Airlock"),
+        Item("003", "First Aid Kit", 20, 20, 10, 100, "2025-07-10", 5, "Medical Bay"),
+        Item("004", "Water Container", 25, 25, 40, 90, "2026-01-15", 60, "Crew Quarters"),
+        Item("005", "Tool Box", 30, 20, 15, 75, "2027-03-22", 200, "Storage"),
+        Item("006", "Emergency Rations", 15, 15, 25, 85, "2026-06-10", 45, "Crew Quarters"),
+        Item("007", "Medical Equipment", 35, 25, 30, 100, "2025-09-30", 10, "Medical Bay"),
+        Item("008", "Spare Parts", 40, 30, 20, 70, "2030-01-01", 300, "Storage"),
+        Item("009", "EVA Suit", 45, 35, 60, 90, "2028-12-31", 150, "Airlock"),
+        Item("010", "Science Samples", 20, 20, 20, 85, "2024-08-15", 5, "Storage")
+    };
     
     vector<Placement> placements = packItems(items, containers);
     

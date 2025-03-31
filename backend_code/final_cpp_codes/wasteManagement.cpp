@@ -344,87 +344,31 @@ public:
 int main() {
     WasteManagementOptimizer optimizer;
     
-    int containerCount;
-    cout << "Enter number of containers: ";
-    cin >> containerCount;
+    // Add containers
+    optimizer.addContainer(Container("contA", "Crew Quarters", 100, 85, 200));
+    optimizer.addContainer(Container("contB", "Airlock", 50, 85, 200));
+    optimizer.addContainer(Container("contC", "Laboratory", 200, 85, 200));
+    optimizer.addContainer(Container("contD", "Return Module", 150, 85, 150));
     
-    for (int i = 0; i < containerCount; i++) {
-        string id, zone;
-        int width, depth, height;
-        
-        cout << "\nEnter container " << i+1 << " details:" << endl;
-        cout << "ID: ";
-        cin >> id;
-        cin.ignore();
-        cout << "Zone: ";
-        getline(cin, zone);
-        cout << "Width: ";
-        cin >> width;
-        cout << "Depth: ";
-        cin >> depth;
-        cout << "Height: ";
-        cin >> height;
-        
-        optimizer.addContainer(Container(id, zone, width, depth, height));
-    }
+    // Add items
+    Item item1("001", "Food Packet", 10, 10, 20, 5, 80, "2025-05-20", 30, "Crew Quarters");
+    Item item2("002", "Oxygen Cylinder", 15, 15, 50, 30, 95, "N/A", 100, "Airlock");
+    Item item3("003", "First Aid Kit", 20, 20, 10, 2, 100, "2025-07-10", 5, "Medical Bay");
+    Item item4("004", "Expired Food", 10, 10, 20, 5, 60, "2025-03-15", 10, "Crew Quarters");
+    Item item5("005", "Used Tool", 15, 10, 5, 1, 70, "N/A", 0, "Laboratory");
     
-    int itemCount;
-    cout << "\nEnter number of items: ";
-    cin >> itemCount;
+    optimizer.addItem(item1);
+    optimizer.addItem(item2);
+    optimizer.addItem(item3);
+    optimizer.addItem(item4);
+    optimizer.addItem(item5);
     
-    for (int i = 0; i < itemCount; i++) {
-        string id, name, expiryDate, preferredZone;
-        int width, depth, height, priority, usageLimit;
-        double mass;
-        
-        cout << "\nEnter item " << i+1 << " details:" << endl;
-        cout << "ID: ";
-        cin >> id;
-        cin.ignore();
-        cout << "Name: ";
-        getline(cin, name);
-        cout << "Width: ";
-        cin >> width;
-        cout << "Depth: ";
-        cin >> depth;
-        cout << "Height: ";
-        cin >> height;
-        cout << "Mass: ";
-        cin >> mass;
-        cout << "Priority: ";
-        cin >> priority;
-        cin.ignore();
-        cout << "Expiry Date (YYYY-MM-DD or N/A): ";
-        getline(cin, expiryDate);
-        cout << "Usage Limit: ";
-        cin >> usageLimit;
-        cin.ignore();
-        cout << "Preferred Zone: ";
-        getline(cin, preferredZone);
-        
-        Item item(id, name, width, depth, height, mass, priority, expiryDate, usageLimit, preferredZone);
-        optimizer.addItem(item);
-    }
-    
-    cout << "\nUpdate item positions:" << endl;
-    for (int i = 0; i < itemCount; i++) {
-        string itemId, containerId;
-        int x, y, z;
-        
-        cout << "Item " << i+1 << " position:" << endl;
-        cout << "Item ID: ";
-        cin >> itemId;
-        cout << "Container ID: ";
-        cin >> containerId;
-        cout << "X position: ";
-        cin >> x;
-        cout << "Y position: ";
-        cin >> y;
-        cout << "Z position: ";
-        cin >> z;
-        
-        optimizer.updateItemPosition(itemId, containerId, x, y, z);
-    }
+    // Update item positions
+    optimizer.updateItemPosition("001", "contA", 0, 0, 0);
+    optimizer.updateItemPosition("002", "contB", 0, 0, 0);
+    optimizer.updateItemPosition("003", "contC", 0, 0, 0);
+    optimizer.updateItemPosition("004", "contA", 10, 0, 0);
+    optimizer.updateItemPosition("005", "contC", 20, 0, 0);
     
     // Identify waste items
     cout << "Identifying waste items..." << endl;

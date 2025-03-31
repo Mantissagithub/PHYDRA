@@ -434,38 +434,57 @@ public:
 int main() {
     RetrievalPathPlanner planner;
     
-    // Create a container
-    Container container("contA", "Crew Quarters", 100, 85, 200);
+    // Get number of containers
+    int numContainers;
+    cout << "Enter number of containers: ";
+    cin >> numContainers;
     
-    // Add items to the container
-    Item item1("001", "Food Packet", Position(0, 0, 0), 10, 10, 20);
-    Item item2("002", "Oxygen Cylinder", Position(20, 0, 0), 15, 15, 50);
-    Item item3("003", "First Aid Kit", Position(40, 20, 0), 20, 20, 10);
-    Item item4("004", "Tool Box", Position(40, 0, 0), 30, 10, 15);
-    Item item5("005", "Water Container", Position(10, 10, 10), 15, 15, 25);
-    Item item6("006", "Science Equipment", Position(50, 30, 0), 20, 20, 30);
-    Item item7("007", "Clothing Pack", Position(70, 0, 0), 15, 10, 10);
-    Item item8("008", "Communication Device", Position(0, 20, 0), 10, 10, 5);
-    Item item9("009", "Emergency Beacon", Position(60, 0, 10), 10, 10, 15);
-    Item item10("010", "Medical Supplies", Position(30, 30, 10), 15, 15, 20);
-    Item item11("011", "Spare Parts", Position(80, 10, 0), 20, 15, 20);
-    Item item12("012", "Research Samples", Position(20, 40, 0), 10, 10, 10);
-    
-    container.addItem(item1);
-    container.addItem(item2);
-    container.addItem(item3);
-    container.addItem(item4);
-    container.addItem(item5);
-    container.addItem(item6);
-    container.addItem(item7);
-    container.addItem(item8);
-    container.addItem(item9);
-    container.addItem(item10);
-    container.addItem(item11);
-    container.addItem(item12);
-    
-    // Add the container to the planner
-    planner.addContainer(container);
+    for (int i = 0; i < numContainers; i++) {
+        string containerId, zone;
+        int width, depth, height;
+        
+        cout << "\nContainer " << (i+1) << " details:" << endl;
+        cout << "Enter container ID: ";
+        cin >> containerId;
+        cout << "Enter zone: ";
+        cin.ignore();
+        getline(cin, zone);
+        cout << "Enter width: ";
+        cin >> width;
+        cout << "Enter depth: ";
+        cin >> depth;
+        cout << "Enter height: ";
+        cin >> height;
+        
+        Container container(containerId, zone, width, depth, height);
+        
+        // Get number of items for this container
+        int numItems;
+        cout << "\nEnter number of items for container " << containerId << ": ";
+        cin >> numItems;
+        
+        for (int j = 0; j < numItems; j++) {
+            string itemId, itemName;
+            int posX, posY, posZ, itemWidth, itemDepth, itemHeight;
+            
+            cout << "\nItem " << (j+1) << " details:" << endl;
+            cout << "Enter item ID: ";
+            cin >> itemId;
+            cout << "Enter item name: ";
+            cin.ignore();
+            getline(cin, itemName);
+            cout << "Enter position (x y z): ";
+            cin >> posX >> posY >> posZ;
+            cout << "Enter dimensions (width depth height): ";
+            cin >> itemWidth >> itemDepth >> itemHeight;
+            
+            Item item(itemId, itemName, Position(posX, posY, posZ), itemWidth, itemDepth, itemHeight);
+            container.addItem(item);
+        }
+        
+        // Add the container to the planner
+        planner.addContainer(container);
+    }
     
     // Plan retrieval for item3 (First Aid Kit)
     cout << "Planning retrieval for First Aid Kit (003)..." << endl;

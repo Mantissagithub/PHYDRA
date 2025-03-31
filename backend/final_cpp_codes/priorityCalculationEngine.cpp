@@ -193,11 +193,11 @@ public:
     }
 };
 
+std::unordered_map<std::string, Item> itemsMap;
 class PriorityCalculationEngine {
 private:
     PriorityCalculator calculator;
     ItemPriorityQueue priorityQueue;
-    std::unordered_map<std::string, Item> itemsMap;
 
 public:
     void addItem(const Item& item) {
@@ -312,14 +312,64 @@ public:
 int main() {
     PriorityCalculationEngine engine;
 
+    cout<<"Worked!!!";
     // Add items
-    engine.addItem(Item("001", "Food Packet", 10, 10, 20, 5, 80, "2025-05-20", 30, "Crew Quarters", "consumables"));
-    engine.addItem(Item("002", "Oxygen Cylinder", 15, 15, 50, 30, 95, "N/A", 100, "Airlock", "equipment"));
-    engine.addItem(Item("003", "First Aid Kit", 20, 20, 10, 2, 100, "2025-07-10", 5, "Medical Bay", "consumables"));
+    int n;
+    cout<<"Enter The Number of Items : ";
+    cin>>n;
+    for(int i=0;i<n;i++){
+        std::string id, name, expiryDate, preferredZone, itemType;
+        int width, depth, height, priority, usageLimit;
+        double mass;
 
-    engine.updateItemZone("001", "Crew Quarters"); 
-    engine.updateItemZone("002", "Laboratory");   
-    engine.updateItemZone("003", "Medical Bay"); 
+        std::cout << "Enter Item ID: ";
+        std::cin >> id;
+        std::cin.ignore(); // Clear newline from buffer
+
+        std::cout << "Enter Item Name: ";
+        std::getline(std::cin, name);
+
+        std::cout << "Enter Width, Depth, Height (in cm): ";
+        std::cin >> width >> depth >> height;
+
+        std::cout << "Enter Mass (in kg): ";
+        std::cin >> mass;
+
+        std::cout << "Enter Priority (1-100): ";
+        std::cin >> priority;
+
+        std::cout << "Enter Expiry Date (YYYY-MM-DD or N/A): ";
+        std::cin >> expiryDate;
+
+        std::cout << "Enter Usage Limit: ";
+        std::cin >> usageLimit;
+
+        std::cout << "Enter Preferred Zone: ";
+        std::cin.ignore(); // Clear newline from buffer
+        std::getline(std::cin, preferredZone);
+
+        std::cout << "Enter Item Type (consumables/equipment/payload): ";
+        std::getline(std::cin, itemType);
+
+        engine.addItem(Item(id, name, width, depth, height, mass, priority, expiryDate, usageLimit, preferredZone, itemType));
+    }
+    // engine.addItem(Item("001", "Food Packet", 10, 10, 20, 5, 80, "2025-05-20", 30, "Crew Quarters", "consumables"));
+    // engine.addItem(Item("002", "Oxygen Cylinder", 15, 15, 50, 30, 95, "N/A", 100, "Airlock", "equipment"));
+    // engine.addItem(Item("003", "First Aid Kit", 20, 20, 10, 2, 100, "2025-07-10", 5, "Medical Bay", "consumables"));
+    // engine.addItem(Item("004", "Space Suit", 50, 40, 20, 15, 90, "2026-03-15", 50, "Airlock", "equipment"));
+    // engine.addItem(Item("005", "Science Experiment", 30, 30, 30, 8, 75, "2025-04-01", 10, "Laboratory", "payload"));
+    // engine.addItem(Item("006", "Water Filter", 15, 15, 25, 3, 85, "2025-08-30", 200, "Life Support", "equipment"));
+    // engine.addItem(Item("007", "Emergency Rations", 10, 20, 5, 1, 70, "2025-01-15", 5, "Storage", "consumables"));
+    // engine.addItem(Item("008", "Solar Panel", 100, 80, 5, 25, 60, "N/A", 1000, "Exterior", "equipment"));
+    // engine.addItem(Item("009", "Medical Supplies", 25, 25, 15, 4, 95, "2025-02-01", 20, "Medical Bay", "consumables"));
+    // engine.addItem(Item("010", "Communication Device", 8, 15, 3, 0.5, 88, "N/A", 500, "Command Center", "equipment"));
+
+    
+    // Update item zones based on entered data
+    for (const auto& item : itemsMap) {
+        // Initially place items in their preferred zones when possible
+        engine.updateItemZone(item.second.id, item.second.preferredZone);
+    }
 
     std::cout << "Items sorted by priority score:" << std::endl;
     std::vector<Item> sortedItems = engine.getAllItemsSortedByPriority();
