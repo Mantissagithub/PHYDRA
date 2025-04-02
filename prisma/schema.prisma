@@ -10,16 +10,18 @@ datasource db {
 
 // wdh
 
-type Dimensions {
-    width Int
-    depth Int
-    height Int
-}
+// type Dimensions {
+//     width Int
+//     depth Int
+//     height Int
+// }
 
 model Item {
     id String @id @default(auto()) @map("_id") @db.ObjectId
     name String
-    dimensions Dimensions
+    width Int
+    depth Int
+    height Int
     priority Int
     expiryDate String
     usageLimit Int
@@ -31,7 +33,9 @@ model Item {
 model Container {
     id String @id @default(auto()) @map("_id") @db.ObjectId
     zone String
-    dimensions Dimensions
+    width Int
+    depth Int
+    height Int
     itemsIds String[]
 }
 

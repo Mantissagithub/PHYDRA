@@ -1,13 +1,17 @@
-from fastapi import FastAPI,Request,Response
+from fastapi import FastAPI,Request,Response, HTTPException
 import json
 from pydantic import BaseModel
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+# from sqlmodel import Field, Session, SQLModel, create_engine, select
 from typing import List, Optional
 import requests
-import pandas as pd
+# import pandas as pd
 import csv
+from prisma import Prisma
+from prisma.models import Item, Container, Zone
 
 import subprocess
+
+prisma = Prisma()
 
 app = FastAPI()
 
@@ -16,16 +20,26 @@ app = FastAPI()
 def welcome():
     return Response("Welcome")
 
+@app.on_event("startup")
+async def startup():
+    await prisma.connect()
+    print("Prisma connected....")
+
+@app.on_event("shutdown")
+async def shutdown():
+    await prisma.disconnect()
+    print("Prisma disconnected....")
+
 class PlacementItem(BaseModel):
     itemId: str
-    name: str
-    width: float
-    depth: float
-    height: float
-    priority: float
-    expiryDate: str
-    usageLimit: float
-    preferredZone: str
+    itemName: str
+    itemWidth: float
+    itemDepth: float
+    itemHeight: float
+    itemPriority: float
+    itemExpiryDate: str
+    itemUsageLimit: float
+    itemPreferredZone: str
 
 class PlacementContainer(BaseModel):
     containerId: str
@@ -441,8 +455,32 @@ def simulate_day(data:SimulateDayRequest):
 
 
 @app.post("/api/import/items")
-def import_items(data):
-    pass
+async def import_items(data : PlacementItem):
+    try:
+        item_data = {
+            "id": data.itemId,
+            "name": data.itemName,
+            "width": data.itemWidth,
+            "depth": data.itemDepth,
+            "height": data.itemHeight,
+            "priority": data.itemPriority,
+            "expiryDate": data.itemExpiryDate,
+            "usageLimit": data.itemUsageLimit,
+            "preferredZone": data.itemPreferredZone
+        }
+
+        print(item_data["id"])
+
+        created_item = await prisma.item.create({
+            "data" : item_data
+        })
+
+        return{
+            "status": "success",
+            "item": created_item.dict()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 
