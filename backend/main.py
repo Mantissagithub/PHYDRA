@@ -456,25 +456,23 @@ def simulate_day(data:SimulateDayRequest):
 
 @app.post("/api/import/items")
 async def import_items(data : PlacementItem):
+    print(data)
     try:
         item_data = {
-            "id": data.itemId,
+            "itemId":data.itemId,
             "name": data.itemName,
-            "width": data.itemWidth,
-            "depth": data.itemDepth,
-            "height": data.itemHeight,
-            "priority": data.itemPriority,
+            "width": int(data.itemWidth),
+            "depth": int(data.itemDepth),
+            "height": int(data.itemHeight),
+            "priority": int(data.itemPriority),
             "expiryDate": data.itemExpiryDate,
-            "usageLimit": data.itemUsageLimit,
-            "preferredZone": data.itemPreferredZone
+            "usageLimit": int(data.itemUsageLimit),
+            "preferredZone": data.itemPreferredZone,
         }
 
-        print(item_data["id"])
 
-        created_item = await prisma.item.create({
-            "data" : item_data
-        })
-
+        created_item = await prisma.item.create(item_data)
+        print("Created ITem")
         return{
             "status": "success",
             "item": created_item.dict()

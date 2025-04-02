@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
     provider = "mongodb"
-    url      = "mongodb+srv://mantissa6789:Mantis%402510@cluster0.9ramotn.mongodb.net/"
+    url      = "mongodb+srv://mantissa6789:Mantis%402510@cluster0.9ramotn.mongodb.net/iss"
 }
 
 // wdh
@@ -17,7 +17,8 @@ datasource db {
 // }
 
 model Item {
-    id String @id @default(auto()) @map("_id") @db.ObjectId
+    id String @id @default(uuid()) @map("_id")
+    itemId String
     name String
     width Int
     depth Int
@@ -31,7 +32,7 @@ model Item {
 }
 
 model Container {
-    id String @id @default(auto()) @map("_id") @db.ObjectId
+    id String @id @default(uuid()) @map("_id")
     zone String
     width Int
     depth Int
@@ -40,7 +41,7 @@ model Container {
 }
 
 model Zone{
-    id String @id @default(auto()) @map("_id") @db.ObjectId
+    id String @id @default(uuid()) @map("_id")
     name String
     containersIds String[]
 }
