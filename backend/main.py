@@ -1,3 +1,4 @@
+from hmac import new
 from sys import stdin
 from fastapi import FastAPI,Request,Response, HTTPException
 import json
@@ -8,7 +9,7 @@ import requests
 import pandas as pd
 import csv
 from prisma import Prisma
-from prisma.models import Item, Container, Zone
+from prisma.models import Item, Container as PrismaContainer, Zone
 from datetime import datetime
 
 import subprocess
@@ -49,6 +50,14 @@ class PlacementContainer(BaseModel):
     width: float
     depth: float
     height: float
+
+class Container(BaseModel):
+    containerId: str
+    zone: str
+    width: float
+    depth: float
+    height: float
+    items: List[str] = []
 
 class PlacementRequest(BaseModel):
     items: List[PlacementItem]
@@ -100,6 +109,8 @@ class SimulateDayRequest(BaseModel):
     
 class ContainerImportRequest(BaseModel):
     fileUrl: str
+
+containerState : List[Container] = []
 
 @app.post("/api/import/containers")
 def import_containers(data: ContainerImportRequest):
@@ -259,11 +270,8 @@ async def placement(date: PlacementRequest):
     print("C++ Program Output:", stdout)
     print("C++ Program Errors:", stderr)
 
-    try:
-        output_data = json.loads(stdout)
-        raw_items = output_data.get("items", [])
-    except json.JSONDecodeError as e:
-        raise HTTPException(status_code=500, detail=f"Failed to parse C++ output: {e}")
+    output_data = json.loads(stdout)
+    raw_items = output_data.get("items", [])
 
     new_items = []
     for item in raw_items:
@@ -285,9 +293,9 @@ async def placement(date: PlacementRequest):
         c_data = {
             "containerId": c.containerId,
             "zone": c.zone,
-            "width": int(c.width),
-            "depth": int(c.depth),
-            "height": int(c.height),
+            "width": float(c.width),
+            "depth": float(c.depth),
+            "height": float(c.height),
         }
 
         try:
@@ -307,6 +315,34 @@ async def placement(date: PlacementRequest):
 
     print("C++ Program Output:", stdout)
     print("C++ Program Errors:", stderr)
+
+    stdout = stdout.strip()
+
+    if not stdout:
+        raise HTTPException(status_code=500, detail="C++ program did not return any output. Check for errors.")
+    print("-"*50,stdout)
+    # output_data = json.loads(stdout)
+    
+    # newContainerState = output_data.get("finalContainers", [])
+    
+    # for x in newContainerState:
+    #     items = []
+    #     newContainer = Container(
+    #         containerId = x.get("containerId", ""),
+    #         zone=x.get("zone", ""),
+    #         width=float(x.get("width", 0)),
+    #         depth=float(x.get("depth", 0)),
+    #         height=float(x.get("height", 0)),
+    #         items = x.get("itemIds", [])
+    #     )
+
+    #     containerState.append(newContainer)
+
+    # print(f"new container state: {containerState}")
+    # output_refined = {
+    #     "placements" : output_data["placements"],
+    #     "rearrangements" : output_data["rearrangements"]
+    # }
 
     return {"status": "success", "message" : stdout}
 

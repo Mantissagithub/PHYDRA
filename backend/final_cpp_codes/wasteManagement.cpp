@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <unordered_map>
 #include <climits>
+#include <fstream>
+#include "json.hpp"
 using namespace std;
 
 struct Item;
@@ -344,6 +346,32 @@ public:
 int main() {
     WasteManagementOptimizer optimizer;
     
+    using nlohmann::json;
+
+    
+    
+    string unDockingContainerId;
+    string undockingDate;
+    double maxWeight;
+    
+    // Read from text file
+    std::ifstream inputFile("ReturnPlan.txt");
+    if (!inputFile) {
+        cerr << "Failed to open ReturnPlan.txt" << endl;
+        return 1;
+    }
+    
+    // Read the first three lines
+    getline(inputFile, unDockingContainerId);
+    getline(inputFile, undockingDate);
+    string maxWeightStr;
+    getline(inputFile, maxWeightStr);
+    maxWeight = stod(maxWeightStr);
+    
+    cout << "Loaded unDockingContainerId: " << unDockingContainerId << endl;
+    cout << "Loaded undockingDate: " << undockingDate << endl;
+    cout << "Loaded maxWeight: " << maxWeight << " kg" << endl;
+    
     int containerCount;
     cout << "Enter number of containers: ";
     cin >> containerCount;
@@ -437,9 +465,9 @@ int main() {
     
     // Generate return plan
     cout << "\nGenerating return plan..." << endl;
-    auto returnPlan = optimizer.generateReturnPlan("contD", "2025-04-15", 100.0);
+    auto returnPlan = optimizer.generateReturnPlan(unDockingContainerId, undockingDate, maxWeight);
     
-    cout << "Return plan contains " << returnPlan.steps.size() << " steps:" << endl;
+    cout << "Return plan containsgetline " << returnPlan.steps.size() << " steps:" << endl;
     for (const auto& step : returnPlan.steps) {
         cout << "Step " << step.stepNumber << ": Move " << step.itemName 
              << " from " << step.fromContainer << " to " << step.toContainer << endl;
@@ -477,7 +505,7 @@ int main() {
 
     // Complete undocking
     cout << "\nCompleting undocking..." << endl;
-    int itemsRemoved = optimizer.completeUndocking("contD");
+    int itemsRemoved = optimizer.completeUndocking(unDockingContainerId);
     cout << "Removed " << itemsRemoved << " items from container contD." << endl;
     cout << "Remaining items in the system: " << optimizer.getAllItems().size() << endl;
     return 0;

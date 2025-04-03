@@ -81,10 +81,10 @@ public:
 
         // 2. Expiry Date Score
         int daysToExpiry = daysUntilExpiry(expiryDate);
-        double expiryScore = std::exp(-0.05 * daysToExpiry); // Exponential decay
+        double expiryScore = std::exp(-0.05 * std::max(0, daysToExpiry)); // Exponential decay
 
         // 3. Usage Limit Score
-        double usageScore = 1.0 / (1.0 + usageLimit); // Inverse relationship
+        double usageScore = 1.0 / (1.0 +  std::max(0, usageLimit)); // Inverse relationship
 
         // 4. Preferred Zone Score
         double zoneScore = inPreferredZone ? 1.0 : 0.5;
@@ -112,7 +112,7 @@ public:
             MASS_WEIGHT * massScore +
             VOLUME_WEIGHT * volumeScore;
 
-        return totalScore;
+        return std::max(0.0, std::min(1.0, totalScore));
     }
 };
 
@@ -309,7 +309,7 @@ public:
     }
 };
 
-#include <nlohmann/json.hpp>
+#include "json.hpp"
 #include <iostream>
 #include <sstream>
 using json = nlohmann::json;

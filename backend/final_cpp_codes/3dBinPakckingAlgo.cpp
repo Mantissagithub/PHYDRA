@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <tuple>
 #include <queue>
+#include <cmath>
+#include <unordered_set>
 
 using namespace std;
 struct Position {
@@ -40,7 +42,24 @@ struct Container {
     int volume() const { return width * depth * height; }
     
     Container(string _id, string _zone, int w, int d, int h) 
-        : id(_id), zone(_zone), width(w), depth(h), height(h) {}
+        : id(_id), zone(_zone), width(w), depth(d), height(h) {}
+};
+
+struct finalContainer {
+    string id;
+    string zone;
+    int width, depth, height;
+    unordered_set<string> itemIds;
+
+    finalContainer() {}
+
+    finalContainer(string _id, string _zone, int w, int d, int h, 
+                  const unordered_set<string>& _itemIds) 
+        : id(_id), zone(_zone), 
+          width(max(1, w)), // Prevent zero dimensions
+          depth(max(1, d)), 
+          height(max(1, h)), 
+          itemIds(_itemIds) {} // Fixed: was using itemIds instead of _itemIds
 };
 
 struct FreeSpace {
@@ -57,31 +76,31 @@ struct FreeSpace {
     }
     
     bool isBetterThan(const FreeSpace& other, const Item& item) const {
-        cout << "Comparing FreeSpace at (" << x << ", " << y << ", " << z << ") with dimensions (" 
-             << width << "x" << depth << "x" << height << ") to FreeSpace at (" 
-             << other.x << ", " << other.y << ", " << other.z << ") with dimensions (" 
-             << other.width << "x" << other.depth << "x" << other.height << ") for item with dimensions (" 
-             << item.width << "x" << item.depth << "x" << item.height << ")" << endl;
+        // cout << "Comparing FreeSpace at (" << x << ", " << y << ", " << z << ") with dimensions (" 
+        //      << width << "x" << depth << "x" << height << ") to FreeSpace at (" 
+        //      << other.x << ", " << other.y << ", " << other.z << ") with dimensions (" 
+        //      << other.width << "x" << other.depth << "x" << other.height << ") for item with dimensions (" 
+        //      << item.width << "x" << item.depth << "x" << item.height << ")" << endl;
 
         if (fits(item) && !other.fits(item)) {
-            cout << "This FreeSpace fits the item, but the other does not." << endl;
+            // cout << "This FreeSpace fits the item, but the other does not." << endl;
             return true;
         }
         if (!fits(item) && other.fits(item)) {
-            cout << "The other FreeSpace fits the item, but this one does not." << endl;
+            // cout << "The other FreeSpace fits the item, but this one does not." << endl;
             return false;
         }
         
         if (fits(item) && other.fits(item)) {
             int thisWaste = volume() - item.volume();
             int otherWaste = other.volume() - item.volume();
-            cout << "Both FreeSpaces fit the item. This FreeSpace waste: " << thisWaste 
-                 << ", Other FreeSpace waste: " << otherWaste << endl;
+            // cout << "Both FreeSpaces fit the item. This FreeSpace waste: " << thisWaste 
+            //      << ", Other FreeSpace waste: " << otherWaste << endl;
             return thisWaste < otherWaste;
         }
         
-        cout << "Neither FreeSpace fits the item. Comparing volumes. This FreeSpace volume: " 
-             << volume() << ", Other FreeSpace volume: " << other.volume() << endl;
+        // cout << "Neither FreeSpace fits the item. Comparing volumes. This FreeSpace volume: " 
+        //      << volume() << ", Other FreeSpace volume: " << other.volume() << endl;
         return volume() > other.volume();
     }
 };
@@ -144,20 +163,20 @@ struct ContainerState {
         for (const auto& p : placedItems) {
             total += p.first.volume();
         }
-        cout << "Used volume in container " << container.id << ": " << total << endl;
+        // cout << "Used volume in container " << container.id << ": " << total << endl;
         return total;
     }
 
     int freeVolume() const {
         int freeVol = container.volume() - usedVolume();
-        cout << "Free volume in container " << container.id << ": " << freeVol << endl;
+        // cout << "Free volume in container " << container.id << ": " << freeVol << endl;
         return freeVol;
     }
     
     bool tryPlaceItem(const Item& item, Position& outPosition) {
-        cout << "Attempting to place item " << item.id << " with dimensions (" 
-             << item.width << "x" << item.depth << "x" << item.height << ") in container " 
-             << container.id << endl;
+        // cout << "Attempting to place item " << item.id << " with dimensions (" 
+        //      << item.width << "x" << item.depth << "x" << item.height << ") in container " 
+        //      << container.id << endl;
 
         sort(freeSpaces.begin(), freeSpaces.end(), 
              [&item](const FreeSpace& a, const FreeSpace& b) {
@@ -167,23 +186,23 @@ struct ContainerState {
         for (auto it = freeSpaces.begin(); it != freeSpaces.end(); ++it) {
             if (it->fits(item)) {
                 FreeSpace space = *it;
-                cout << "Found suitable FreeSpace at (" << space.x << ", " << space.y << ", " 
-                     << space.z << ") with dimensions (" << space.width << "x" << space.depth 
-                     << "x" << space.height << ")" << endl;
+                // cout << "Found suitable FreeSpace at (" << space.x << ", " << space.y << ", " 
+                //      << space.z << ") with dimensions (" << space.width << "x" << space.depth 
+                //      << "x" << space.height << ")" << endl;
 
                 freeSpaces.erase(it);
                 
                 Position pos(space.x, space.y, space.z);
                 placedItems.push_back({item, pos});
-                cout << "Placed item " << item.id << " at position (" << pos.x << ", " << pos.y 
-                     << ", " << pos.z << ")" << endl;
+                // cout << "Placed item " << item.id << " at position (" << pos.x << ", " << pos.y 
+                //      << ", " << pos.z << ")" << endl;
                 
                 if (space.height > item.height) {
                     freeSpaces.push_back(FreeSpace(
                         space.x, space.y, space.z + item.height,
                         space.width, space.depth, space.height - item.height
                     ));
-                    cout << "Created new FreeSpace above the placed item." << endl;
+                    // cout << "Created new FreeSpace above the placed item." << endl;
                 }
                 
                 if (space.width > item.width) {
@@ -191,7 +210,7 @@ struct ContainerState {
                         space.x + item.width, space.y, space.z,
                         space.width - item.width, space.depth, item.height
                     ));
-                    cout << "Created new FreeSpace to the right of the placed item." << endl;
+                    // cout << "Created new FreeSpace to the right of the placed item." << endl;
                 }
                 
                 if (space.depth > item.depth) {
@@ -199,7 +218,7 @@ struct ContainerState {
                         space.x, space.y + item.depth, space.z,
                         item.width, space.depth - item.depth, item.height
                     ));
-                    cout << "Created new FreeSpace in front of the placed item." << endl;
+                    // cout << "Created new FreeSpace in front of the placed item." << endl;
                 }
                 
                 mergeFreeSpaces();
@@ -210,7 +229,7 @@ struct ContainerState {
         }
 
         for (auto& [blockingItem, blockingPos] : placedItems) {
-            cout<<"Entering the rearrangement thing..."<<endl;
+            // cout<<"Entering the rearrangement thing..."<<endl;
             if (blockingPos.y + blockingItem.height > item.height + outPosition.y) {
                 Position shiftPos = blockingPos;
                 shiftPos.y = item.height + outPosition.y;  
@@ -308,12 +327,12 @@ struct ContainerState {
                }
            }
         
-        cout << "Failed to place item " << item.id << " in container " << container.id << endl;
+        // cout << "Failed to place item " << item.id << " in container " << container.id << endl;
         return false;
     }
     
     void mergeFreeSpaces() {
-        cout << "Merging FreeSpaces in container " << container.id << endl;
+        // cout << "Merging FreeSpaces in container " << container.id << endl;
         sort(freeSpaces.begin(), freeSpaces.end(), 
              [](const FreeSpace& a, const FreeSpace& b) {
                  return a.volume() > b.volume();
@@ -322,10 +341,10 @@ struct ContainerState {
         for (size_t i = 0; i < freeSpaces.size(); ++i) {
             for (size_t j = i + 1; j < freeSpaces.size(); ) {
                 if (isContained(freeSpaces[j], freeSpaces[i])) {
-                    cout << "FreeSpace at (" << freeSpaces[j].x << ", " << freeSpaces[j].y 
-                         << ", " << freeSpaces[j].z << ") is contained within FreeSpace at (" 
-                         << freeSpaces[i].x << ", " << freeSpaces[i].y << ", " 
-                         << freeSpaces[i].z << "). Removing it." << endl;
+                    // cout << "FreeSpace at (" << freeSpaces[j].x << ", " << freeSpaces[j].y 
+                    //      << ", " << freeSpaces[j].z << ") is contained within FreeSpace at (" 
+                    //      << freeSpaces[i].x << ", " << freeSpaces[i].y << ", " 
+                    //      << freeSpaces[i].z << "). Removing it." << endl;
                     freeSpaces.erase(freeSpaces.begin() + j);
                 } else {
                     ++j;
@@ -349,8 +368,8 @@ struct ContainerState {
     
     bool isAccessible(const Position& pos, const Item& item) const {
         if (pos.y == 0) {
-            cout << "Item at position (" << pos.x << ", " << pos.y << ", " << pos.z 
-                 << ") is accessible because it is on the ground." << endl;
+            // cout << "Item at position (" << pos.x << ", " << pos.y << ", " << pos.z 
+            //      << ") is accessible because it is on the ground." << endl;
             return true;
         }
         for (const auto& p : placedItems) {
@@ -369,14 +388,14 @@ struct ContainerState {
             }
         }
         
-        cout << "Item at position (" << pos.x << ", " << pos.y << ", " << pos.z 
-             << ") is accessible." << endl;
+        // cout << "Item at position (" << pos.x << ", " << pos.y << ", " << pos.z 
+        //      << ") is accessible." << endl;
         return true;
     }
     
     int retrievalSteps(const string& itemId) const {
-        cout << "Calculating retrieval steps for item " << itemId << " in container " 
-             << container.id << endl;
+        // cout << "Calculating retrieval steps for item " << itemId << " in container " 
+        //      << container.id << endl;
 
         for (size_t i = 0; i < placedItems.size(); ++i) {
             if (placedItems[i].first.id == itemId) {
@@ -384,7 +403,7 @@ struct ContainerState {
                 const Position& pos = placedItems[i].second;
                 
                 if (isAccessible(pos, item)) {
-                    cout << "Item " << itemId << " is accessible. No retrieval steps needed." << endl;
+                    // cout << "Item " << itemId << " is accessible. No retrieval steps needed." << endl;
                     return 0;
                 }
                 
@@ -398,19 +417,19 @@ struct ContainerState {
                     if (placedPos.x < pos.x + item.width && placedPos.x + placedItem.width > pos.x &&
                         placedPos.z < pos.z + item.height && placedPos.z + placedItem.height > pos.z &&
                         placedPos.y < pos.y) {
-                        cout << "Item " << placedItem.id << " at position (" << placedPos.x 
-                             << ", " << placedPos.y << ", " << placedPos.z 
-                             << ") blocks retrieval of item " << itemId << endl;
+                        // cout << "Item " << placedItem.id << " at position (" << placedPos.x 
+                        //      << ", " << placedPos.y << ", " << placedPos.z 
+                        //      << ") blocks retrieval of item " << itemId << endl;
                         steps++;
                     }
                 }
                 
-                cout << "Total retrieval steps for item " << itemId << ": " << steps << endl;
+                // cout << "Total retrieval steps for item " << itemId << ": " << steps << endl;
                 return steps;
             }
         }
         
-        cout << "Item " << itemId << " not found in container " << container.id << endl;
+        // cout << "Item " << itemId << " not found in container " << container.id << endl;
         return -1;
     }
 };
@@ -426,28 +445,28 @@ vector<Placement> packItems(const vector<Item>& items, const vector<Container>& 
     
     vector<Item> sortedItems = items;
     sort(sortedItems.begin(), sortedItems.end(), [](const Item& a, const Item& b) {
-        if (a.priority != b.priority) return a.priorityScore < b.priorityScore;
+        if (a.priorityScore != b.priorityScore) return a.priorityScore < b.priorityScore;
         return a.volume() > b.volume();
     });
     
     for (const Item& item : sortedItems) {
         bool placed = false;
-        cout << "Attempting to place item " << item.id << " with dimensions (" 
-             << item.width << "x" << item.depth << "x" << item.height << ")" << endl;
+        // cout << "Attempting to place item " << item.id << " with dimensions (" 
+        //      << item.width << "x" << item.depth << "x" << item.height << ")" << endl;
 
         for (auto& [containerId, state] : containerStates) {
-            cout << "Checking container " << containerId << " in zone " << state.container.zone 
-                 << " for item " << item.id << endl;
+            // cout << "Checking container " << containerId << " in zone " << state.container.zone 
+            //      << " for item " << item.id << endl;
 
             if (state.container.zone == item.preferredZone) {
-                cout << "Container " << containerId << " matches the preferred zone of item " 
-                     << item.id << endl;
+                // cout << "Container " << containerId << " matches the preferred zone of item " 
+                //      << item.id << endl;
 
                 Position pos;
                 if (state.tryPlaceItem(item, pos)) {
-                    cout << "Item " << item.id << " successfully placed in container " 
-                         << containerId << " at position (" << pos.x << ", " << pos.y << ", " 
-                         << pos.z << ")" << endl;
+                    // cout << "Item " << item.id << " successfully placed in container " 
+                    //      << containerId << " at position (" << pos.x << ", " << pos.y << ", " 
+                    //      << pos.z << ")" << endl;
 
                     placements.push_back(Placement(
                         item.id, containerId, 
@@ -457,24 +476,24 @@ vector<Placement> packItems(const vector<Item>& items, const vector<Container>& 
                     placed = true;
                     break;
                 } else {
-                    cout << "Failed to place item " << item.id << " in container " 
-                         << containerId << endl;
+                    // cout << "Failed to place item " << item.id << " in container " 
+                        //  << containerId << endl;
                 }
             } else {
-                cout << "Container " << containerId << " does not match the preferred zone of item " 
-                     << item.id << endl;
+                // cout << "Container " << containerId << " does not match the preferred zone of item " 
+                //      << item.id << endl;
             }
         }
 
         if (!placed) {
-            cout << "Attempting to place item " << item.id << " in any available container." << endl;
+            // cout << "Attempting to place item " << item.id << " in any available container." << endl;
 
             for (auto& [containerId, state] : containerStates) {
                 Position pos;
                 if (state.tryPlaceItem(item, pos)) {
-                    cout << "Item " << item.id << " successfully placed in container " 
-                         << containerId << " at position (" << pos.x << ", " << pos.y << ", " 
-                         << pos.z << ")" << endl;
+                    // cout << "Item " << item.id << " successfully placed in container " 
+                    //      << containerId << " at position (" << pos.x << ", " << pos.y << ", " 
+                    //      << pos.z << ")" << endl;
 
                     placements.push_back(Placement(
                         item.id, containerId, 
@@ -484,25 +503,25 @@ vector<Placement> packItems(const vector<Item>& items, const vector<Container>& 
                     placed = true;
                     break;
                 } else {
-                    cout << "Failed to place item " << item.id << " in container " 
-                         << containerId << endl;
+                    // cout << "Failed to place item " << item.id << " in container " 
+                    //      << containerId << endl;
                 }
             }
         }
 
         if (!placed) {
-            cout << "Warning: Item " << item.id << " could not be placed in any container. "
-                 << "Rearrangement or additional containers may be needed." << endl;
+            // cout << "Warning: Item " << item.id << " could not be placed in any container. "
+            //      << "Rearrangement or additional containers may be needed." << endl;
         }
     }
 
-    cout << "Packing process completed. Total placements: " << placements.size() << endl;
+    // cout << "Packing process completed. Total placements: " << placements.size() << endl;
     return placements;
 }
 
 #include <iostream>
 #include <sstream>
-#include <nlohmann/json.hpp>
+#include "json.hpp"
 
 using json = nlohmann::json;
 
@@ -605,6 +624,25 @@ int main() {
     
     vector<Placement> placements = packItems(items, containers);
 
+    vector<finalContainer> finalContainers;
+
+    for (const auto& containerState : containerStates) {
+        const ContainerState& state = containerState.second;
+        finalContainers.push_back(finalContainer{
+            state.container.id, state.container.zone, state.container.width, 
+            state.container.depth, state.container.height, {}
+        });
+    }
+
+    for (const auto& placement : placements) {
+        for (auto& finalContainer : finalContainers) {
+            if (finalContainer.id == placement.containerId) {
+                finalContainer.itemIds.insert(placement.itemId);
+                break;
+            }
+        }
+    }
+
     json output;
 
     output["placements"] = json::array();
@@ -640,6 +678,23 @@ int main() {
                                                  rearrangement.toEndCoordinates.z};
 
         output["rearrangements"].push_back(rearrangementJson);
+    }
+
+    output["finalContainers"] = json::array();
+    for (const auto& finalContainer : finalContainers) {
+        json finalContainerJson;
+        finalContainerJson["containerId"] = finalContainer.id;
+        finalContainerJson["zone"] = finalContainer.zone;
+        finalContainerJson["width"] = finalContainer.width;
+        finalContainerJson["depth"] = finalContainer.depth;
+        finalContainerJson["height"] = finalContainer.height;
+        finalContainerJson["itemIds"] = json::array();
+
+        for (const auto& itemId : finalContainer.itemIds) {
+            finalContainerJson["itemIds"].push_back(itemId);
+        }
+
+        output["finalContainers"].push_back(finalContainerJson);
     }
     cout << output.dump(4) << endl;
     return 0;
