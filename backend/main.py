@@ -4,7 +4,7 @@ from pydantic import BaseModel
 # from sqlmodel import Field, Session, SQLModel, create_engine, select
 from typing import List, Optional
 import requests
-# import pandas as pd
+import pandas as pd
 import csv
 from prisma import Prisma
 from prisma.models import Item, Container, Zone
