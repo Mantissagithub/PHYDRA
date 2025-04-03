@@ -291,9 +291,25 @@ Storage
     print(stdout,stderr)
     return Response(stdout)
 
-@app.post("/api/search")
-def search(data:SearchRequest):
-    pass
+@app.get("/api/search")
+async def search(itemId: Optional[str] = None, itemName: Optional[str] = None, userId: Optional[str] = None):
+    if not itemId and not itemName:
+        raise HTTPException(status_code=400, detail="Either itemId or itemName must be provided")
+    
+    try:
+        if itemId:
+            item = await prisma.item.find_first(where={"itemId": itemId})
+        elif itemName:
+            item = await prisma.item.find_first(where={"name": itemName})
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found")
+        
+        return {
+            "status": "success",
+            "item": item.dict()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/retrieve")
 #data:RetrieveRequest

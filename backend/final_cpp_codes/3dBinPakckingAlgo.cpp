@@ -207,6 +207,7 @@ struct ContainerState {
         }
 
         for (auto& [blockingItem, blockingPos] : placedItems) {
+            cout<<"Entering the rearrangement thing..."<<endl;
             if (blockingPos.y + blockingItem.height > item.height + outPosition.y) {
                 Position shiftPos = blockingPos;
                 shiftPos.y = item.height + outPosition.y;  
