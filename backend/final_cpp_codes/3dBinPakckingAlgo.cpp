@@ -20,13 +20,16 @@ struct Item {
     string expiryDate;
     int usageLimit;
     string preferredZone;
+    int priorityScore;
     
     int volume() const { return width * depth * height; }
+
+    Item(){}
     
     Item(string _id, string _name, int w, int d, int h, int p, 
-         string exp, int usage, string zone) 
+         string exp, int usage, string zone, int score) 
         : id(_id), name(_name), width(w), depth(d), height(h), 
-          priority(p), expiryDate(exp), usageLimit(usage), preferredZone(zone) {}
+          priority(p), expiryDate(exp), usageLimit(usage), preferredZone(zone), priorityScore(score) {}
 };
 
 struct Container {
@@ -423,7 +426,7 @@ vector<Placement> packItems(const vector<Item>& items, const vector<Container>& 
     
     vector<Item> sortedItems = items;
     sort(sortedItems.begin(), sortedItems.end(), [](const Item& a, const Item& b) {
-        if (a.priority != b.priority) return a.priority > b.priority;
+        if (a.priority != b.priority) return a.priorityScore < b.priorityScore;
         return a.volume() > b.volume();
     });
     
@@ -497,81 +500,147 @@ vector<Placement> packItems(const vector<Item>& items, const vector<Container>& 
     return placements;
 }
 
-int main() {
-    int noContainers;
-    cout<<"Enter Number of Containers";
-    cin>>noContainers;
+#include <iostream>
+#include <sstream>
+#include <nlohmann/json.hpp>
 
-    vector<Container> containers;
-    for(int i = 0; i < noContainers; i++) {
-        string id, zone;
-        int width, depth, height;
+using json = nlohmann::json;
+
+using namespace std;
+
+int main() {
+    // int noContainers;
+    // cout<<"Enter Number of Containers";
+    // cin>>noContainers;
+
+    // vector<Container> containers;
+    // for(int i = 0; i < noContainers; i++) {
+    //     string id, zone;
+    //     int width, depth, height;
         
-        cout << "Enter Container " << i+1 << " ID: ";
-        cin >> id;
-        cout << "Enter Container " << i+1 << " Zone: ";
-        cin.ignore(); 
-        getline(cin, zone);
-        cout << "Enter Container " << i+1 << " Width: ";
-        cin >> width;
-        cout << "Enter Container " << i+1 << " Depth: ";
-        cin >> depth;
-        cout << "Enter Container " << i+1 << " Height: ";
-        cin >> height;
+    //     cout << "Enter Container " << i+1 << " ID: ";
+    //     cin >> id;
+    //     cout << "Enter Container " << i+1 << " Zone: ";
+    //     cin.ignore(); 
+    //     getline(cin, zone);
+    //     cout << "Enter Container " << i+1 << " Width: ";
+    //     cin >> width;
+    //     cout << "Enter Container " << i+1 << " Depth: ";
+    //     cin >> depth;
+    //     cout << "Enter Container " << i+1 << " Height: ";
+    //     cin >> height;
         
-        containers.push_back(Container(id, zone, width, depth, height));
+    //     containers.push_back(Container(id, zone, width, depth, height));
+    // }
+    // int noItems;
+    // cout<<"Enter Number of Items";
+    // cin>>noItems;
+    // vector<Item> items;
+    // for(int i = 0; i < noItems; i++) {
+    //     string id, name, expiryDate, preferredZone;
+    //     int width, depth, height, priority, usageLimit;
+        
+    //     cout << "Enter Item " << i+1 << " ID: ";
+    //     cin >> id;
+    //     cout << "Enter Item " << i+1 << " Name: ";
+    //     cin.ignore();
+    //     getline(cin, name);
+    //     cout << "Enter Item " << i+1 << " Width: ";
+    //     cin >> width;
+    //     cout << "Enter Item " << i+1 << " Depth: ";
+    //     cin >> depth;
+    //     cout << "Enter Item " << i+1 << " Height: ";
+    //     cin >> height;
+    //     cout << "Enter Item " << i+1 << " Priority (0-100): ";
+    //     cin >> priority;
+    //     cout << "Enter Item " << i+1 << " Expiry Date (YYYY-MM-DD): ";
+    //     cin >> expiryDate;
+    //     cout << "Enter Item " << i+1 << " Usage Limit: ";
+    //     cin >> usageLimit;
+    //     cout << "Enter Item " << i+1 << " Preferred Zone: ";
+    //     cin.ignore();
+    //     getline(cin, preferredZone);
+        
+    //     items.push_back(Item(id, name, width, depth, height, priority, expiryDate, usageLimit, preferredZone));
+    // }
+
+    ostringstream inputBuffer;
+    string line;
+
+    while(getline(cin, line)) {
+        inputBuffer << line << "\n";
     }
-    int noItems;
-    cout<<"Enter Number of Items";
-    cin>>noItems;
+
+    string inputData = inputBuffer.str();
+
+    json containersData = json::parse(inputData)["containers"];
+    json itemsData = json::parse(inputData)["items"];
+
     vector<Item> items;
-    for(int i = 0; i < noItems; i++) {
-        string id, name, expiryDate, preferredZone;
-        int width, depth, height, priority, usageLimit;
-        
-        cout << "Enter Item " << i+1 << " ID: ";
-        cin >> id;
-        cout << "Enter Item " << i+1 << " Name: ";
-        cin.ignore();
-        getline(cin, name);
-        cout << "Enter Item " << i+1 << " Width: ";
-        cin >> width;
-        cout << "Enter Item " << i+1 << " Depth: ";
-        cin >> depth;
-        cout << "Enter Item " << i+1 << " Height: ";
-        cin >> height;
-        cout << "Enter Item " << i+1 << " Priority (0-100): ";
-        cin >> priority;
-        cout << "Enter Item " << i+1 << " Expiry Date (YYYY-MM-DD): ";
-        cin >> expiryDate;
-        cout << "Enter Item " << i+1 << " Usage Limit: ";
-        cin >> usageLimit;
-        cout << "Enter Item " << i+1 << " Preferred Zone: ";
-        cin.ignore();
-        getline(cin, preferredZone);
-        
-        items.push_back(Item(id, name, width, depth, height, priority, expiryDate, usageLimit, preferredZone));
+    vector<Container> containers;
+    for (const auto& itemData : itemsData) {
+        string id = itemData["itemId"];
+        string name = itemData["name"];
+        int width = itemData["width"];
+        int depth = itemData["depth"];
+        int height = itemData["height"];
+        int priority = itemData["priority"];
+        string expiryDate = itemData["expiryDate"];
+        int usageLimit = itemData["usageLimit"];
+        string preferredZone = itemData["preferredZone"];
+        int priorityScore = itemData["priorityScore"];
+
+        items.push_back(Item(id, name, width, depth, height, priority, expiryDate, usageLimit, preferredZone, priorityScore));
+    }
+
+    for (const auto& containerData : containersData) {
+        string id = containerData["containerId"];
+        string zone = containerData["zone"];
+        int width = containerData["width"];
+        int depth = containerData["depth"];
+        int height = containerData["height"];
+
+        containers.push_back(Container(id, zone, width, depth, height));
     }
     
     vector<Placement> placements = packItems(items, containers);
-    
-    cout << "Placements:" << endl;
-    for (const Placement& p : placements) {
-        cout << "Item " << p.itemId << " placed in container " << p.containerId << " at position ("
-             << p.startPos.x << ", " << p.startPos.y << ", " << p.startPos.z << ") to ("
-             << p.endPos.x << ", " << p.endPos.y << ", " << p.endPos.z << ")" << endl;
+
+    json output;
+
+    output["placements"] = json::array();
+    for (const auto& placement : placements) {
+        json placementJson;
+        placementJson["itemId"] = placement.itemId;
+        placementJson["containerId"] = placement.containerId;
+        placementJson["startPos"] = {placement.startPos.x, placement.startPos.y, placement.startPos.z};
+        placementJson["endPos"] = {placement.endPos.x, placement.endPos.y, placement.endPos.z};
+
+        output["placements"].push_back(placementJson);
     }
 
-    cout << "\nRearrangements:" << endl;
-    for (const Rearrangement& r : rearrangements) {
-        cout << "Step " << r.step << ": " << r.action << " item " << r.itemId 
-             << " from container " << r.fromContainer << " at (" 
-             << r.fromStartCoordinates.x << ", " << r.fromStartCoordinates.y << ", " 
-             << r.fromStartCoordinates.z << ") to container " 
-             << r.toContainer << " at (" 
-             << r.toStartCoordinates.x << ", " << r.toStartCoordinates.y << ", " 
-             << r.toStartCoordinates.z << ")" << endl;
+    output["rearrangements"] = json::array();
+    for (const auto& rearrangement : rearrangements) {
+        json rearrangementJson;
+        rearrangementJson["step"] = rearrangement.step;
+        rearrangementJson["action"] = rearrangement.action;
+        rearrangementJson["itemId"] = rearrangement.itemId;
+        rearrangementJson["fromContainer"] = rearrangement.fromContainer;
+        rearrangementJson["fromStartCoordinates"] = {rearrangement.fromStartCoordinates.x, 
+                                                     rearrangement.fromStartCoordinates.y, 
+                                                     rearrangement.fromStartCoordinates.z};
+        rearrangementJson["fromEndCoordinates"] = {rearrangement.fromEndCoordinates.x, 
+                                                   rearrangement.fromEndCoordinates.y, 
+                                                   rearrangement.fromEndCoordinates.z};
+        rearrangementJson["toContainer"] = rearrangement.toContainer;
+        rearrangementJson["toStartCoordinates"] = {rearrangement.toStartCoordinates.x, 
+                                                   rearrangement.toStartCoordinates.y, 
+                                                   rearrangement.toStartCoordinates.z};
+        rearrangementJson["toEndCoordinates"] = {rearrangement.toEndCoordinates.x, 
+                                                 rearrangement.toEndCoordinates.y, 
+                                                 rearrangement.toEndCoordinates.z};
+
+        output["rearrangements"].push_back(rearrangementJson);
     }
-    
+    cout << output.dump(4) << endl;
     return 0;
 }

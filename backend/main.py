@@ -3,7 +3,7 @@ from fastapi import FastAPI,Request,Response, HTTPException
 import json
 from pydantic import BaseModel
 # from sqlmodel import Field, Session, SQLModel, create_engine, select
-from typing import List, Optional
+from typing import List, Optional, final
 import requests
 import pandas as pd
 import csv
@@ -296,7 +296,19 @@ async def placement(date: PlacementRequest):
         except Exception as e:
             print(f"Error creating container: {e}")
 
-    return {"status": "success", "newItems": new_items}
+    final_json = json.dumps({
+        "items" : new_items,
+        "containers": [c.dict() for c in containers]
+    }, indent=4)
+
+    command = "g++ -std=c++20 final_cpp_codes/3dBinPakckingAlgo.cpp -o final_cpp_codes/3dBinPakckingAlgo && ./final_cpp_codes/3dBinPakckingAlgo"
+    process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+    stdout, stderr = process.communicate(input=final_json)
+
+    print("C++ Program Output:", stdout)
+    print("C++ Program Errors:", stderr)
+
+    return {"status": "success", "message" : stdout}
 
 
 @app.get("/api/search")
