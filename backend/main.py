@@ -13,6 +13,7 @@ from prisma.models import Item, Container as PrismaContainer, Zone
 from datetime import datetime
 
 import subprocess
+import re
 
 prisma = Prisma()
 
@@ -320,31 +321,44 @@ async def placement(date: PlacementRequest):
 
     if not stdout:
         raise HTTPException(status_code=500, detail="C++ program did not return any output. Check for errors.")
+    
     print("-"*50,stdout)
-    # output_data = json.loads(stdout)
+    # Clean the stdout string to make it valid JSON
+    stdout = stdout.replace('\\n', '\n').replace('\\\"', '\"')
+
+    # Remove any invalid escape sequences
+    stdout = re.sub(r'\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})', r'', stdout)
+
+    try:
+        output_data = json.loads(stdout)
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
+        print(f"Problematic JSON: {stdout}")
+        raise HTTPException(status_code=500, detail=f"Invalid JSON response from algorithm: {str(e)}")
+    output_data = json.loads(stdout)
     
-    # newContainerState = output_data.get("finalContainers", [])
+    newContainerState = output_data.get("finalContainers", [])
     
-    # for x in newContainerState:
-    #     items = []
-    #     newContainer = Container(
-    #         containerId = x.get("containerId", ""),
-    #         zone=x.get("zone", ""),
-    #         width=float(x.get("width", 0)),
-    #         depth=float(x.get("depth", 0)),
-    #         height=float(x.get("height", 0)),
-    #         items = x.get("itemIds", [])
-    #     )
+    for x in newContainerState:
+        items = []
+        newContainer = Container(
+            containerId = x.get("containerId", ""),
+            zone=x.get("zone", ""),
+            width=float(x.get("width", 0)),
+            depth=float(x.get("depth", 0)),
+            height=float(x.get("height", 0)),
+            items = x.get("itemIds", [])
+        )
 
-    #     containerState.append(newContainer)
+        containerState.append(newContainer)
 
-    # print(f"new container state: {containerState}")
-    # output_refined = {
-    #     "placements" : output_data["placements"],
-    #     "rearrangements" : output_data["rearrangements"]
-    # }
+    print(f"new container state: {containerState}")
+    output_refined = {
+        "placements" : output_data["placements"],
+        "rearrangements" : output_data["rearrangements"]
+    }
 
-    return {"status": "success", "message" : stdout}
+    return {"status": "success", "message" : output_refined}
 
 
 @app.get("/api/search")
