@@ -228,7 +228,7 @@ Medical Bay
 contD
 Storage
 120 100 250
-10
+8
 001
 Food Packet
 10 10 20
@@ -284,20 +284,6 @@ Spare Parts
 70
 2030-01-01
 300
-Storage
-009
-EVA Suit
-45 35 60
-90
-2028-12-31
-150
-Airlock
-010
-Science Samples
-20 20 20
-85
-2024-08-15
-5
 Storage
 """
 
@@ -471,7 +457,7 @@ async def import_items(data : PlacementItem):
         }
 
 
-        created_item = await prisma.item.create(item_data)
+        created_item = await prisma.item.create(item_data) # type: ignore
         print("Created ITem")
         return{
             "status": "success",

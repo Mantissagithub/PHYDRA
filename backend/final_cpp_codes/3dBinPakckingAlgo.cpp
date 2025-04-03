@@ -7,7 +7,6 @@
 #include <queue>
 
 using namespace std;
-
 struct Position {
     int x, y, z;  
     Position(int _x = 0, int _y = 0, int _z = 0) : x(_x), y(_y), z(_z) {}
@@ -115,12 +114,15 @@ struct Rearrangement{
           toContainer(_toContainer), toStartCoordinates(_toStartCoordinates), toEndCoordinates(_toEndCoordinates) {}
 };
 
+vector<Rearrangement> rearrangements;
+int rearrangementStep = 0;
+
 struct ContainerState {
     Container container;
     vector<pair<Item, Position>> placedItems;
     vector<FreeSpace> freeSpaces;
-    vector<Rearrangement> rearrangements;
-    int rearrangementStep = 0;
+    // vector<Rearrangement> rearrangements;
+    // int rearrangementStep = 0;
     
     //For removal, check all containers
     unordered_map<string, ContainerState>& allContainerStates;
@@ -410,11 +412,10 @@ struct ContainerState {
 };
 
 // Main packing function
+unordered_map<string, ContainerState> containerStates;
+
 vector<Placement> packItems(const vector<Item>& items, const vector<Container>& containers) {
     vector<Placement> placements;
-    
-    // Create container states
-    unordered_map<string, ContainerState> containerStates;
     for (const Container& container : containers) {
         containerStates.emplace(container.id, ContainerState(container));
     }
@@ -558,6 +559,17 @@ int main() {
         cout << "Item " << p.itemId << " placed in container " << p.containerId << " at position ("
              << p.startPos.x << ", " << p.startPos.y << ", " << p.startPos.z << ") to ("
              << p.endPos.x << ", " << p.endPos.y << ", " << p.endPos.z << ")" << endl;
+    }
+
+    cout << "\nRearrangements:" << endl;
+    for (const Rearrangement& r : rearrangements) {
+        cout << "Step " << r.step << ": " << r.action << " item " << r.itemId 
+             << " from container " << r.fromContainer << " at (" 
+             << r.fromStartCoordinates.x << ", " << r.fromStartCoordinates.y << ", " 
+             << r.fromStartCoordinates.z << ") to container " 
+             << r.toContainer << " at (" 
+             << r.toStartCoordinates.x << ", " << r.toStartCoordinates.y << ", " 
+             << r.toStartCoordinates.z << ")" << endl;
     }
     
     return 0;
