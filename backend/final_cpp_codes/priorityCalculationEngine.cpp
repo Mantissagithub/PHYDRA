@@ -309,99 +309,70 @@ public:
     }
 };
 
+#include <nlohmann/json.hpp>
+#include <iostream>
+#include <sstream>
+using json = nlohmann::json;
+
+using namespace std;
+
 int main() {
     PriorityCalculationEngine engine;
+    ostringstream inputBuffer;
+    string line;
 
-    cout<<"Worked!!!";
-    // Add items
-    int n;
-    cout<<"Enter The Number of Items : ";
-    cin>>n;
-    for(int i=0;i<n;i++){
-        std::string id, name, expiryDate, preferredZone, itemType;
-        int width, depth, height, priority, usageLimit;
-        double mass;
+    while(getline(cin, line)) {
+        inputBuffer << line << "\n";
+    }
 
-        std::cout << "Enter Item ID: ";
-        std::cin >> id;
-        std::cin.ignore(); // Clear newline from buffer
+    string inputData = inputBuffer.str();
+    // cout << "Input Data: " << inputData << endl;
 
-        std::cout << "Enter Item Name: ";
-        std::getline(std::cin, name);
+    // string inputJson;
+    // cout << "Got data: "<<inputJson << endl;
+    // getline(cin, inputJson);
 
-        std::cout << "Enter Width, Depth, Height (in cm): ";
-        std::cin >> width >> depth >> height;
+    json input = json::parse(inputData);
 
-        std::cout << "Enter Mass (in kg): ";
-        std::cin >> mass;
-
-        std::cout << "Enter Priority (1-100): ";
-        std::cin >> priority;
-
-        std::cout << "Enter Expiry Date (YYYY-MM-DD or N/A): ";
-        std::cin >> expiryDate;
-
-        std::cout << "Enter Usage Limit: ";
-        std::cin >> usageLimit;
-
-        std::cout << "Enter Preferred Zone: ";
-        std::cin.ignore(); // Clear newline from buffer
-        std::getline(std::cin, preferredZone);
-
-        std::cout << "Enter Item Type (consumables/equipment/payload): ";
-        std::getline(std::cin, itemType);
+    for (const auto& itemData : input["items"]) {
+        std::string id = itemData["itemId"];
+        std::string name = itemData["name"];
+        int width = itemData["width"];
+        int depth = itemData["depth"];
+        int height = itemData["height"];
+        double mass = itemData.contains("mass") ? static_cast<double>(itemData["mass"]) : 0.0;
+        int priority = itemData["priority"];
+        string expiryDate = itemData["expiryDate"];
+        int usageLimit = itemData["usageLimit"];
+        string preferredZone = itemData["preferredZone"];
+        string itemType = itemData.contains("itemType") ? itemData["itemType"] : "unknown";
 
         engine.addItem(Item(id, name, width, depth, height, mass, priority, expiryDate, usageLimit, preferredZone, itemType));
     }
-    // engine.addItem(Item("001", "Food Packet", 10, 10, 20, 5, 80, "2025-05-20", 30, "Crew Quarters", "consumables"));
-    // engine.addItem(Item("002", "Oxygen Cylinder", 15, 15, 50, 30, 95, "N/A", 100, "Airlock", "equipment"));
-    // engine.addItem(Item("003", "First Aid Kit", 20, 20, 10, 2, 100, "2025-07-10", 5, "Medical Bay", "consumables"));
-    // engine.addItem(Item("004", "Space Suit", 50, 40, 20, 15, 90, "2026-03-15", 50, "Airlock", "equipment"));
-    // engine.addItem(Item("005", "Science Experiment", 30, 30, 30, 8, 75, "2025-04-01", 10, "Laboratory", "payload"));
-    // engine.addItem(Item("006", "Water Filter", 15, 15, 25, 3, 85, "2025-08-30", 200, "Life Support", "equipment"));
-    // engine.addItem(Item("007", "Emergency Rations", 10, 20, 5, 1, 70, "2025-01-15", 5, "Storage", "consumables"));
-    // engine.addItem(Item("008", "Solar Panel", 100, 80, 5, 25, 60, "N/A", 1000, "Exterior", "equipment"));
-    // engine.addItem(Item("009", "Medical Supplies", 25, 25, 15, 4, 95, "2025-02-01", 20, "Medical Bay", "consumables"));
-    // engine.addItem(Item("010", "Communication Device", 8, 15, 3, 0.5, 88, "N/A", 500, "Command Center", "equipment"));
 
-    
-    // Update item zones based on entered data
-    for (const auto& item : itemsMap) {
-        // Initially place items in their preferred zones when possible
-        engine.updateItemZone(item.second.id, item.second.preferredZone);
-    }
+    json output;
+    output["items"] = json::array();
 
-    std::cout << "Items sorted by priority score:" << std::endl;
-    std::vector<Item> sortedItems = engine.getAllItemsSortedByPriority();
+    vector<Item> sortedItems = engine.getAllItemsSortedByPriority();
     for (const auto& item : sortedItems) {
-        std::cout << "Item: " << item.name << " (ID: " << item.id << ")" << std::endl;
-        std::cout << "  Priority: " << item.priority << std::endl;
-        std::cout << "  Priority Score: " << item.priorityScore << std::endl;
-        std::cout << "  Preferred Zone: " << item.preferredZone << std::endl;
-        std::cout << "  Current Zone: " << item.currentZone << std::endl;
-        std::cout << "  Expiry Date: " << item.expiryDate << std::endl;
-        std::cout << "  Usage Limit: " << item.usageLimit << std::endl;
-        std::cout << std::endl;
+        json itemJson;
+        itemJson["itemId"] = item.id;
+        itemJson["name"] = item.name;
+        itemJson["width"] = item.width;
+        itemJson["depth"] = item.depth;
+        itemJson["height"] = item.height;
+        itemJson["mass"] = item.mass;
+        itemJson["priority"] = item.priority;
+        itemJson["expiryDate"] = item.expiryDate;
+        itemJson["usageLimit"] = item.usageLimit;
+        itemJson["preferredZone"] = item.preferredZone;
+        itemJson["itemType"] = item.itemType;
+        itemJson["priorityScore"] = item.priorityScore;
+
+        output["items"].push_back(itemJson);
     }
 
-    std::cout << "Simulating usage of First Aid Kit (ID: 003)" << std::endl;
-    engine.decrementUsageLimit("003");
-    
-    Item* updatedItem = engine.getItemById("003");
-    if (updatedItem) {
-        std::cout << "Updated Usage Limit: " << updatedItem->usageLimit << std::endl;
-    }
-    
-    std::cout << "\nChecking for waste items:" << std::endl;
-    std::vector<Item> wasteItems = engine.getWasteItems();
-    if (wasteItems.empty()) {
-        std::cout << "No waste items found." << std::endl;
-    } else {
-        for (const auto& item : wasteItems) {
-            std::cout << "Waste Item: " << item.name << " (ID: " << item.id << ")" << std::endl;
-            std::cout << "  Reason: " << (item.usageLimit <= 0 ? "Out of Uses" : "Expired") << std::endl;
-        }
-    }
+    cout << output.dump(4) << endl;
 
     return 0;
 }

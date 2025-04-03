@@ -1,3 +1,4 @@
+from sys import stdin
 from fastapi import FastAPI,Request,Response, HTTPException
 import json
 from pydantic import BaseModel
@@ -212,85 +213,91 @@ consumables
     
 
 @app.post("/api/placement")
-#data:PlacementRequest
-def placement():
-    command = "g++ -std=c++20 final_cpp_codes/3dBinPakckingAlgo.cpp -o final_cpp_codes/3dBinPakckingAlgo && ./final_cpp_codes/3dBinPakckingAlgo"
-    process = subprocess.Popen(command,stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
-    input_data = """4
-contA
-Crew Quarters
-100 85 200
-contB
-Airlock
-50 85 200
-contC
-Medical Bay
-80 70 150
-contD
-Storage
-120 100 250
-8
-001
-Food Packet
-10 10 20
-80
-2025-05-20
-30
-Crew Quarters
-002
-Oxygen Cylinder
-15 15 50
-95
-2025-12-31
-100
-Airlock
-003
-First Aid Kit
-20 20 10
-100
-2025-07-10
-5
-Medical Bay
-004
-Water Container
-25 25 40
-90
-2026-01-15
-60
-Crew Quarters
-005
-Tool Box
-30 20 15
-75
-2027-03-22
-200
-Storage
-006
-Emergency Rations
-15 15 25
-85
-2026-06-10
-45
-Crew Quarters
-007
-Medical Equipment
-35 25 30
-100
-2025-09-30
-10
-Medical Bay
-008
-Spare Parts
-40 30 20
-70
-2030-01-01
-300
-Storage
-"""
+async def placement(date: PlacementRequest):
+    items = date.items
+    containers = date.containers
 
-    stdout, stderr = process.communicate(input_data)
-    print(stdout,stderr)
-    return Response(stdout)
+    for i in items:
+        i_data = {
+            "itemId": i.itemId,
+            "name": i.itemName,
+            "width": int(i.itemWidth),
+            "depth": int(i.itemDepth),
+            "height": int(i.itemHeight),
+            "priority": int(i.itemPriority),
+            "expiryDate": i.itemExpiryDate,
+            "usageLimit": int(i.itemUsageLimit),
+            "preferredZone": i.itemPreferredZone,
+        }
+
+        try:
+            created_item = await prisma.item.create(data=i_data)  # type: ignore
+            print("Created Item")
+        except Exception as e:
+            print(f"Error creating item: {e}")
+
+    input_data = json.dumps({
+        "items": [
+            {
+                "itemId": item.itemId,
+                "name": item.itemName,
+                "width": item.itemWidth,
+                "depth": item.itemDepth,
+                "height": item.itemHeight,
+                "priority": item.itemPriority,
+                "expiryDate": item.itemExpiryDate,
+                "usageLimit": item.itemUsageLimit,
+                "preferredZone": item.itemPreferredZone
+            } for item in items
+        ]
+    }, indent=4)
+
+    command = "g++ -std=c++20 final_cpp_codes/priorityCalculationEngine.cpp -o final_cpp_codes/priorityCalculationEngine && ./final_cpp_codes/priorityCalculationEngine"
+    process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+    stdout, stderr = process.communicate(input=input_data)
+
+    print("C++ Program Output:", stdout)
+    print("C++ Program Errors:", stderr)
+
+    try:
+        output_data = json.loads(stdout)
+        raw_items = output_data.get("items", [])
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to parse C++ output: {e}")
+
+    new_items = []
+    for item in raw_items:
+        corrected_item = {
+            "itemId": item.get("itemId", "").strip(),
+            "name": item.get("name", "").strip(),
+            "width": int(item.get("width", 0)),
+            "depth": int(item.get("depth", 0)),
+            "height": int(item.get("height", 0)),
+            "priority": int(item.get("priority", 0)),
+            "expiryDate": item.get("expiryDate", "").strip(),
+            "usageLimit": int(item.get("usageLimit", 0)),
+            "preferredZone": item.get("preferredZone", "").strip(),
+            "priorityScore": float(item.get("priorityScore", 0.0))
+        }
+        new_items.append(corrected_item)
+
+    for c in containers:
+        c_data = {
+            "containerId": c.containerId,
+            "zone": c.zone,
+            "width": int(c.width),
+            "depth": int(c.depth),
+            "height": int(c.height),
+        }
+
+        try:
+            created_container = await prisma.container.create(data=c_data)  # type: ignore
+            print("Created Container")
+        except Exception as e:
+            print(f"Error creating container: {e}")
+
+    return {"status": "success", "newItems": new_items}
+
 
 @app.get("/api/search")
 async def search(itemId: Optional[str] = None, itemName: Optional[str] = None, userId: Optional[str] = None):
@@ -486,7 +493,7 @@ async def import_items(data : PlacementItem):
     print(data)
     try:
         item_data = {
-            "itemId":data.itemId,
+            "itemId": data.itemId,
             "name": data.itemName,
             "width": int(data.itemWidth),
             "depth": int(data.itemDepth),
