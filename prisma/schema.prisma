@@ -18,8 +18,7 @@ datasource db {
 
 model Item {
     id String @id @default(uuid()) @map("_id")
-    itemId String
-    name String
+    itemId String @unique @map("itemId")
     width Int
     depth Int
     height Int
