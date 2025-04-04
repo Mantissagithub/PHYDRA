@@ -23,6 +23,7 @@ model Item {
     width Int
     depth Int
     height Int
+    mass Int
     priority Int
     expiryDate String
     usageLimit Int

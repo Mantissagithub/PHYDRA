@@ -16,6 +16,8 @@ from datetime import datetime, date, timedelta
 import subprocess
 import re
 
+from sympy import content
+
 prisma = Prisma()
 
 app = FastAPI()
@@ -116,117 +118,6 @@ class ContainerImportRequest(BaseModel):
 containerState : List[Container] = []
 
 # placements: List[dict] = []
-
-@app.post("/api/import/containers")
-def import_containers(data: ContainerImportRequest):
-    url = data.fileUrl
-    print(url)
-    # try:
-    #     df = pd.read_csv(url, on_bad_lines='skip')
-    #     df.to_csv("download.csv")
-    #     return Response(content=f"Success: {len(df)} rows imported", media_type="text/plain")
-    # except Exception as e:
-    #     return Response(content=f"Error: {str(e)}", status_code=400, media_type="text/plain")
-    container_data = pd.read_csv("username.csv")
-    command = "g++ -std=c++20 final_cpp_codes/priorityCalculationEngine.cpp -o final_cpp_codes/priorityCalculationEngine && ./final_cpp_codes/priorityCalculationEngine"
-    process = subprocess.Popen(command,stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
-    print("starting process")
-    input_data = """10
-I001
-ItemA
-10 20 30
-5.5
-80
-2025-12-30
-3
-Zone1
-consumables
-I002
-ItemB
-15 25 35
-4.2
-60
-2024-06-15
-5
-Zone2
-equipment
-I003
-ItemC
-20 30 40
-6.0
-90
-N/A
-2
-Zone3
-payload
-I004
-ItemD
-12 18 24
-3.8
-70
-2026-01-01
-4
-Zone1
-consumables
-I005
-ItemE
-14 22 28
-4.5
-50
-2025-09-10
-1
-Zone2
-equipment
-I006
-ItemF
-16 24 32
-5.0
-85
-2023-11-20
-6
-Zone3
-payload
-I007
-ItemG
-18 26 34
-5.7
-95
-N/A
-3
-Zone1
-consumables
-I008
-ItemH
-11 19 27
-3.2
-40
-2024-07-05
-2
-Zone2
-equipment
-I009
-ItemI
-13 21 29
-4.8
-75
-2026-05-15
-5
-Zone3
-payload
-I010
-ItemJ
-17 23 31
-6.2
-88
-2025-02-28
-7
-Zone1
-consumables
-"""
-    stdout, stderr = process.communicate(input_data)
-    print(stdout,stderr)
-    return Response(stdout)
-    
 
 @app.post("/api/placement")
 async def placement(data: PlacementRequest):
@@ -708,8 +599,57 @@ async def place(data:PlaceRequest):
     print("C++ Program Errors:", stderr)
 
 @app.get("/api/waste/identify")
-def waste_identify():
-    pass
+async def waste_identify():
+    items = await prisma.item.find_many()
+    placements = await prisma.placement.find_many()
+
+    waste_items_data = []
+    curr_date = date.today()
+
+    for item in items:
+        expire = False
+        reason = None
+        if(item.expiryDate and item.expiryDate != "N/A"):
+            expiry_date = datetime.strptime(item.expiryDate, "%Y-%m-%d").date()
+            if expiry_date <= curr_date:
+                # items_data.append(item)
+                expire = True
+                print(f"Item {item.itemId} has expired on {expiry_date}")
+                reason = "Expired"
+        elif(item.usageLimit and item.usageLimit != 0):
+            if item.usageLimit <= 0:
+                # items_data.append(item)
+                expire = True
+                print(f"Item {item.itemId} has usage limit reached")
+                reason = "Out of uses"
+
+        if expire:
+            placements = await prisma.placement.find_first(where={"itemId": item.itemId})
+            if placements:
+                thing = {
+                    "itemId": item.itemId,
+                    "name": item.name,
+                    "reason" : reason,
+                    "containerId" : placements.containerId,
+                    "positions" : {
+                        "startPos": {
+                            "width": placements.startPos["x"],
+                            "depth": placements.startPos["y"],
+                            "height": placements.startPos["z"],
+                        },
+                        "endPos": {
+                            "width": placements.endPos["x"],
+                            "depth": placements.endPos["y"],
+                            "height": placements.endPos["z"],
+                        }
+                    }
+                }
+
+                waste_items_data.append(thing)
+
+    return {
+        "status": "success",
+        "wasteItems": waste_items_data}
 
 @app.post("/api/waste/return‐plan")
 def waste_return_plan(data:WasteReturnPlanRequest):
@@ -813,8 +753,28 @@ contA
 
 
 @app.post("/api/waste/complete‐undocking")
-def waste_complete_undocking(data:WasteCompleteUndocking):
-    pass
+async def waste_complete_undocking(data:WasteCompleteUndocking):
+    undockingContainerId = data.undockingContainerId
+    timestamp = data.timestamp
+
+    placements = await prisma.placement.find_many(where={"containerId": undockingContainerId})
+
+    item_ids = []
+
+    for placement in placements:
+        item_ids.append(placement.itemId)
+        if(timestamp == date.today()):
+            await prisma.item.delete(where={"itemId": placement.itemId})
+            print(f"Deleted item {placement.itemId}")
+    
+    await prisma.placement.delete_many(where={"containerId": undockingContainerId})
+    print(f"Deleted placements for container {undockingContainerId}")
+
+    return {
+        "status": "success",
+        "itemsRemoved" : len(item_ids)
+    }
+
 
 @app.post("/api/simulate/day")
 async def simulate_day(data: SimulateDayRequest):
@@ -878,30 +838,75 @@ async def simulate_day(data: SimulateDayRequest):
 
 
 @app.post("/api/import/items")
-async def import_items(data : PlacementItem):
-    print(data)
-    try:
-        item_data = {
-            "itemId": data.itemId,
-            "name": data.itemName,
-            "width": int(data.itemWidth),
-            "depth": int(data.itemDepth),
-            "height": int(data.itemHeight),
-            "priority": int(data.itemPriority),
-            "expiryDate": data.itemExpiryDate,
-            "usageLimit": int(data.itemUsageLimit),
-            "preferredZone": data.itemPreferredZone,
-        }
+async def import_items():
+# item_id,name,width_cm,depth_cm,height_cm,mass_kg,priority,expiry_date,usage_limit,preferred_zone
+    count = 0
+    with open("csv_data/input_items.csv", "r") as f:
+        reader = csv.reader(f)
+        header = next(reader)
+        for row in reader:
+            count+=1
+            item_id = row[0]
+            name = row[1]
+            width = float(row[2]) if row[2] else None
+            depth = float(row[3]) if row[3] else None
+            height = float(row[4]) if row[4] else None
+            mass = float(row[5]) if row[5] else None
+            priority = int(row[6]) if row[6] else None
+            expiry_date = row[7]
+            usage_limit = int(row[8]) if row[8] else None
+            preferred_zone = row[9]
 
 
-        created_item = await prisma.item.create(item_data) # type: ignore
-        print("Created ITem")
-        return{
-            "status": "success",
-            "item": created_item.dict()
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+            item_data = {
+                "itemId": item_id,
+                "name": name,
+                "width": width,
+                "depth": depth,
+                "height": height,
+                "mass": mass,
+                "priority": priority,
+                "expiryDate": expiry_date,
+                "usageLimit": usage_limit,
+                "preferredZone": preferred_zone
+            }
+            
+            try:
+                created_item = await prisma.item.create(data=item_data) # type: ignore
+                print("Created Item")
+            except Exception as e:
+                print(f"Error creating item: {e}")
+    return Response(content=f"Success: {count} items imported", media_type="text/plain")
+
+@app.post("/api/import/containers")
+async def import_containers():
+
+    count = 0
+    with open("csv_data/containers.csv", "r") as f:
+        reader = csv.reader(f)
+        header = next(reader)
+        for row in reader:
+            count+=1
+            zone = row[0]
+            container_id = row[1]
+            width = float(row[2]) if row[2] else None
+            depth = float(row[3]) if row[3] else None
+            height = float(row[4]) if row[4] else None
+            container_data = {
+                "containerId": container_id,
+                "zone": zone,
+                "width": width,
+                "depth": depth,
+                "height": height
+            }
+
+            try:
+                created_container = await prisma.container.create(data=container_data.dict()) #type: ignore
+                print("Created Container")
+            except Exception as e:
+                print(f"Error creating container: {e}")
+    
+    return {content: f"Success: {count} containers imported"}
 
 
 

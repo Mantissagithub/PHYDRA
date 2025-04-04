@@ -6,9 +6,7 @@
 #include <chrono>  // For timing
 
 using namespace std;
-using namespace std::chrono; //For high_resolution_clock
-
-// Structure definitions (matching your data)
+using namespace std::chrono; 
 struct Position {
     double width;
     double depth;
