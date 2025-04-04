@@ -342,35 +342,66 @@ public:
     }
 };
 
+std::string readJsonFile(const std::string& filePath) {
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not open file");
+    }
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
+
+using json = nlohmann::json;
 // Example usage
 int main() {
     WasteManagementOptimizer optimizer;
     
-    using nlohmann::json;
 
     
     
     string unDockingContainerId;
     string undockingDate;
     double maxWeight;
+    string jsonString = "";
+    std::string filePath = "/home/harish/code/iss-hackathon/backend/final_cpp_codes/ReturnPlan.json";  // Adjust this path to where your JSON file is located
+    try {
+        jsonString = readJsonFile(filePath);
+        // std::cout << jsonString << std::endl;
+    } catch (const std::runtime_error& error) {
+        std::cerr << "Error: " << error.what() << std::endl;
+        std::cout << "Enter the full path to ReturnPlan.json: ";
+        std::cin >> filePath;
+        try {
+            jsonString = readJsonFile(filePath);
+        } catch (const std::runtime_error& error2) {
+            std::cerr << "Error: " << error2.what() << std::endl;
+            return 1;
+        }
+    }
+
+//     string inputData = R"({
+//     "undockingContainerId": "contC",
+//     "undockingDate": "2023-10-11",
+//     "maxWeight": 100.0
+// })";
+    // cout<<"\n";
+    // string inputData = inputBuffer.str();
+    // cout<<inputData;
+    json returnPlanData = json::parse(jsonString);
     
-    // Read from text file
-    std::ifstream inputFile("ReturnPlan.txt");
-    if (!inputFile) {
-        cerr << "Failed to open ReturnPlan.txt" << endl;
+    try {
+        unDockingContainerId = returnPlanData["undockingContainerId"];
+        undockingDate = returnPlanData["undockingDate"];
+        maxWeight = returnPlanData["maxWeight"];
+    } catch (const exception& e) {
+        cerr << "Error parsing ReturnPlan.json: " << e.what() << endl;
         return 1;
     }
     
-    // Read the first three lines
-    getline(inputFile, unDockingContainerId);
-    getline(inputFile, undockingDate);
-    string maxWeightStr;
-    getline(inputFile, maxWeightStr);
-    maxWeight = stod(maxWeightStr);
-    
-    cout << "Loaded unDockingContainerId: " << unDockingContainerId << endl;
-    cout << "Loaded undockingDate: " << undockingDate << endl;
-    cout << "Loaded maxWeight: " << maxWeight << " kg" << endl;
+    // cout << "Loaded unDockingContainerId: " << unDockingContainerId << endl;
+    // cout << "Loaded undockingDate: " << undockingDate << endl;
+    // cout << "Loaded maxWeight: " << maxWeight << " kg" << endl;
     
     int containerCount;
     cout << "Enter number of containers: ";
@@ -455,7 +486,7 @@ int main() {
     }
     
     // Identify waste items
-    cout << "Identifying waste items..." << endl;
+    // cout << "Identifying waste items..." << endl;
     vector<Item> wasteItems = optimizer.identifyWasteItems();
     
     cout << "Found " << wasteItems.size() << " waste items:" << endl;
@@ -467,46 +498,75 @@ int main() {
     cout << "\nGenerating return plan..." << endl;
     auto returnPlan = optimizer.generateReturnPlan(unDockingContainerId, undockingDate, maxWeight);
     
-    cout << "Return plan containsgetline " << returnPlan.steps.size() << " steps:" << endl;
-    for (const auto& step : returnPlan.steps) {
-        cout << "Step " << step.stepNumber << ": Move " << step.itemName 
-             << " from " << step.fromContainer << " to " << step.toContainer << endl;
-    }
-    
-    cout << "\nRetrieval steps:" << endl;
-    for (const auto& step : returnPlan.retrievalSteps) {
-        cout << "Step " << step.stepNumber << ": " << step.action << " " 
-             << step.itemName << " (ID: " << step.itemId << ")" << endl;
-    }
-    
-    cout << "\nReturn manifest:" << endl;
-    cout << "Undocking container: " << returnPlan.manifest.undockingContainerId << endl;
-    cout << "Undocking date: " << returnPlan.manifest.undockingDate << endl;
-    cout << "Total volume: " << returnPlan.manifest.totalVolume << " cubic cm" << endl;
-    cout << "Total weight: " << returnPlan.manifest.totalWeight << " kg" << endl;
-    
-    cout << "\nItems to return:" << endl;
-    for (const auto& [id, name, reason] : returnPlan.manifest.returnItems) {
-        cout << "- " << name << " (ID: " << id << "): " << reason << endl;
-    }
-    
-    // Process a waste item
-    cout << "\nProcessing waste item..." << endl;
-    if (!wasteItems.empty()) {
-        auto processed = optimizer.processWasteItem(wasteItems[0]);
-        cout << "Processed " << wasteItems[0].name << ":" << endl;
-        cout << "Original volume: " << processed.originalVolume << " cubic cm" << endl;
-        cout << "Processed volume: " << processed.processedVolume << " cubic cm" << endl;
-        cout << "Volume reduction: " << (processed.originalVolume - processed.processedVolume) 
-             << " cubic cm (" << (1 - processed.processedVolume/processed.originalVolume)*100 << "%)" << endl;
-        cout << "Water recovered: " << processed.waterRecovered << " kg" << endl;
-        cout << "Final mass: " << processed.finalMass << "kg" << endl;
+    cout << "{" << endl;
+    cout << "  \"success\": true," << endl;
+    cout << "  \"returnPlan\": [" << endl;
+
+    // Output return plan steps
+    for (size_t i = 0; i < returnPlan.steps.size(); i++) {
+        const auto& step = returnPlan.steps[i];
+        cout << "    {" << endl;
+        cout << "      \"step\": " << step.stepNumber << "," << endl;
+        cout << "      \"itemId\": \"" << step.itemId << "\"," << endl;
+        cout << "      \"itemName\": \"" << step.itemName << "\"," << endl;
+        cout << "      \"fromContainer\": \"" << step.fromContainer << "\"," << endl;
+        cout << "      \"toContainer\": \"" << step.toContainer << "\"" << endl;
+        cout << "    }" << (i < returnPlan.steps.size() - 1 ? "," : "") << endl;
     }
 
+    cout << "  ]," << endl;
+    cout << "  \"retrievalSteps\": [" << endl;
+
+    // Output retrieval steps
+    for (size_t i = 0; i < returnPlan.retrievalSteps.size(); i++) {
+        const auto& step = returnPlan.retrievalSteps[i];
+        cout << "    {" << endl;
+        cout << "      \"step\": " << step.stepNumber << "," << endl;
+        cout << "      \"action\": \"" << step.action << "\"," << endl;
+        cout << "      \"itemId\": \"" << step.itemId << "\"," << endl;
+        cout << "      \"itemName\": \"" << step.itemName << "\"" << endl;
+        cout << "    }" << (i < returnPlan.retrievalSteps.size() - 1 ? "," : "") << endl;
+    }
+
+    cout << "  ]," << endl;
+    cout << "  \"returnManifest\": {" << endl;
+    cout << "    \"undockingContainerId\": \"" << returnPlan.manifest.undockingContainerId << "\"," << endl;
+    cout << "    \"undockingDate\": \"" << returnPlan.manifest.undockingDate << "\"," << endl;
+    cout << "    \"returnItems\": [" << endl;
+
+    // Output return items in manifest
+    for (size_t i = 0; i < returnPlan.manifest.returnItems.size(); i++) {
+        const auto& [id, name, reason] = returnPlan.manifest.returnItems[i];
+        cout << "      {" << endl;
+        cout << "        \"itemId\": \"" << id << "\"," << endl;
+        cout << "        \"name\": \"" << name << "\"," << endl;
+        cout << "        \"reason\": \"" << reason << "\"" << endl;
+        cout << "      }" << (i < returnPlan.manifest.returnItems.size() - 1 ? "," : "") << endl;
+    }
+
+    cout << "    ]," << endl;
+    cout << "    \"totalVolume\": " << returnPlan.manifest.totalVolume << "," << endl;
+    cout << "    \"totalWeight\": " << returnPlan.manifest.totalWeight << endl;
+    cout << "  }" << endl;
+    cout << "}" << endl;
+
+    // Process a waste item
+    // cout << "\nProcessing waste item..." << endl;
+    // if (!wasteItems.empty()) {
+    //     auto processed = optimizer.processWasteItem(wasteItems[0]);
+    //     cout << "Processed " << wasteItems[0].name << ":" << endl;
+    //     cout << "Original volume: " << processed.originalVolume << " cubic cm" << endl;
+    //     cout << "Processed volume: " << processed.processedVolume << " cubic cm" << endl;
+    //     cout << "Volume reduction: " << (processed.originalVolume - processed.processedVolume) 
+    //     << " cubic cm (" << (1 - processed.processedVolume/processed.originalVolume)*100 << "%)" << endl;
+    //     cout << "Water recovered: " << processed.waterRecovered << " kg" << endl;
+    //     cout << "Final mass: " << processed.finalMass << "kg" << endl;
+    // }
+
     // Complete undocking
-    cout << "\nCompleting undocking..." << endl;
+    // cout << "\nCompleting undocking..." << endl;
     int itemsRemoved = optimizer.completeUndocking(unDockingContainerId);
-    cout << "Removed " << itemsRemoved << " items from container contD." << endl;
-    cout << "Remaining items in the system: " << optimizer.getAllItems().size() << endl;
+    // cout << "Removed " << itemsRemoved << " items from container contD." << endl;
+    // cout << "Remaining items in the system: " << optimizer.getAllItems().size() << endl;
     return 0;
 }

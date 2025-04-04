@@ -53,6 +53,16 @@ struct Item {
                position.z < target.z + height &&
                position.z + height > target.z;
     }
+
+    friend ostream& operator<<(ostream& os, const Item& item) {
+        os << "Item(ID: " << item.id 
+           << ", Name: " << item.name 
+           << ", Position: " << item.position.toString() 
+           << ", Width: " << item.width 
+           << ", Depth: " << item.depth 
+           << ", Height: " << item.height << ")";
+        return os;
+    }
 };
 
 
@@ -416,7 +426,7 @@ public:
         return true;
     }
 
-    vector<RetrievalStep> planRetrieval(const string& containerId, const string& itemId, const string& algorithm = "aco") {
+    vector<RetrievalStep> planRetrieval(const string& containerId, const string& itemId, const string& algorithm = "astar") {
         if (algorithm == "astar") {
             return planRetrievalWithAStar(containerId, itemId);
         } else if (algorithm == "aco") {
@@ -431,62 +441,132 @@ public:
     }
 };
 
+#include <iostream>
+#include <sstream>
+#include "json.hpp"
+using json = nlohmann::json;
+
+using namespace std;
+
 int main() {
     RetrievalPathPlanner planner;
     
     // Create a container
-    Container container("contA", "Crew Quarters", 100, 85, 200);
+    // Container container("contA", "Crew Quarters", 100, 85, 200);
     
-    // Add items to the container
-    Item item1("001", "Food Packet", Position(0, 0, 0), 10, 10, 20);
-    Item item2("002", "Oxygen Cylinder", Position(20, 0, 0), 15, 15, 50);
-    Item item3("003", "First Aid Kit", Position(40, 20, 0), 20, 20, 10);
-    Item item4("004", "Tool Box", Position(40, 0, 0), 30, 10, 15);
-    Item item5("005", "Water Container", Position(10, 10, 10), 15, 15, 25);
-    Item item6("006", "Science Equipment", Position(50, 30, 0), 20, 20, 30);
-    Item item7("007", "Clothing Pack", Position(70, 0, 0), 15, 10, 10);
-    Item item8("008", "Communication Device", Position(0, 20, 0), 10, 10, 5);
-    Item item9("009", "Emergency Beacon", Position(60, 0, 10), 10, 10, 15);
-    Item item10("010", "Medical Supplies", Position(30, 30, 10), 15, 15, 20);
-    Item item11("011", "Spare Parts", Position(80, 10, 0), 20, 15, 20);
-    Item item12("012", "Research Samples", Position(20, 40, 0), 10, 10, 10);
+    // // Add items to the container
+    // Item item1("001", "Food Packet", Position(0, 0, 0), 10, 10, 20);
+    // Item item2("002", "Oxygen Cylinder", Position(20, 0, 0), 15, 15, 50);
+    // Item item3("003", "First Aid Kit", Position(40, 20, 0), 20, 20, 10);
+    // Item item4("004", "Tool Box", Position(40, 0, 0), 30, 10, 15);
+    // Item item5("005", "Water Container", Position(10, 10, 10), 15, 15, 25);
+    // Item item6("006", "Science Equipment", Position(50, 30, 0), 20, 20, 30);
+    // Item item7("007", "Clothing Pack", Position(70, 0, 0), 15, 10, 10);
+    // Item item8("008", "Communication Device", Position(0, 20, 0), 10, 10, 5);
+    // Item item9("009", "Emergency Beacon", Position(60, 0, 10), 10, 10, 15);
+    // Item item10("010", "Medical Supplies", Position(30, 30, 10), 15, 15, 20);
+    // Item item11("011", "Spare Parts", Position(80, 10, 0), 20, 15, 20);
+    // Item item12("012", "Research Samples", Position(20, 40, 0), 10, 10, 10);
     
-    container.addItem(item1);
-    container.addItem(item2);
-    container.addItem(item3);
-    container.addItem(item4);
-    container.addItem(item5);
-    container.addItem(item6);
-    container.addItem(item7);
-    container.addItem(item8);
-    container.addItem(item9);
-    container.addItem(item10);
-    container.addItem(item11);
-    container.addItem(item12);
+    // container.addItem(item1);
+    // container.addItem(item2);
+    // container.addItem(item3);
+    // container.addItem(item4);
+    // container.addItem(item5);
+    // container.addItem(item6);
+    // container.addItem(item7);
+    // container.addItem(item8);
+    // container.addItem(item9);
+    // container.addItem(item10);
+    // container.addItem(item11);
+    // container.addItem(item12);
     
     // Add the container to the planner
-    planner.addContainer(container);
-    
-    // Plan retrieval for item3 (First Aid Kit)
-    cout << "Planning retrieval for First Aid Kit (003)..." << endl;
-    vector<RetrievalStep> steps = planner.planRetrieval("contA", "003");
-    
-    // Print the retrieval steps
-    cout << "Retrieval steps:" << endl;
-    for (const auto& step : steps) {
-        cout << "Step " << step.stepNumber << ": " << step.action << " " 
-             << step.itemName << " (ID: " << step.itemId << ")" << endl;
+    ostringstream inputBuffer;
+    string line;
+
+    while(getline(cin, line)) {
+        inputBuffer << line << "\n";
     }
+
+    string inputData = inputBuffer.str();
+
+    // cout<<"Input Data: "<<inputData<<endl;
+
+    json inputJson = json::parse(inputData);
+
+    json container = inputJson["container"];
+
+    // cout<<"Container: "<<container.dump(4)<<endl;
+
+    string itemId = inputJson["itemId"];
+
+    // cout<<"Item ID: "<<itemId<<endl;
     
-    // Try different algorithms
-    cout << "\nPlanning retrieval using A* algorithm..." << endl;
-    steps = planner.planRetrieval("contA", "003", "astar");
-    
-    cout << "Retrieval steps (A*):" << endl;
-    for (const auto& step : steps) {
-        cout << "Step " << step.stepNumber << ": " << step.action << " " 
-             << step.itemName << " (ID: " << step.itemId << ")" << endl;
+    Container parsedContainer(
+        container["containerId"],
+        container["zone"],
+        container["width"],
+        container["depth"],
+        container["height"]
+    );
+
+    // cout<<"Parsed Container: "<<parsedContainer.id<<endl;
+
+    vector<json> item_data;
+
+    for (const auto& item : container["items"]) {
+        // cout<<"item: "<<item.dump(4)<<endl;
+        json itemDetails = item;
+        if (!itemDetails.is_null()) {
+            Item item_x = Item(
+                itemDetails["itemId"],
+                itemDetails["name"],
+                Position(
+                    itemDetails["startPos"]["x"],
+                    itemDetails["startPos"]["y"],
+                    itemDetails["startPos"]["z"]
+                ),
+                itemDetails["width"],
+                itemDetails["depth"],
+                itemDetails["height"]
+            );
+
+            // cout<<item_x<<endl;
+            parsedContainer.addItem(item_x);
+        }
     }
-    
+
+    // cout<<"Item data: "<<item_data[0].dump(4)<<endl;
+
+    // cout<<"Parsed Container Items: "<<endl;
+    // for (const auto& item : parsedContainer.items) {
+    //     cout << "Item ID: " << item.id << ", Name: " << item.name << ", Position: " << item.position.toString() << endl;
+    // }
+
+    planner.addContainer(parsedContainer);
+
+    // Plan retrieval for an item
+    vector<RetrievalStep> steps = planner.planRetrieval(parsedContainer.id, itemId, "astar");
+
+    if(steps.empty()){
+        cout<<"No steps found for the given item."<<endl;
+        return 0;
+    }
+
+    json output;
+
+    for (const auto& step : steps) {
+        json stepJson;
+        stepJson["stepNumber"] = step.stepNumber;
+        stepJson["action"] = step.action;
+        stepJson["itemId"] = step.itemId;
+        stepJson["itemName"] = step.itemName;
+        output.push_back(stepJson);
+    }
+
+    cout << output.dump(4) << endl;
+
+
     return 0;
 }

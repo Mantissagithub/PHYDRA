@@ -1,5 +1,6 @@
 from hmac import new
 from sys import stdin
+from textwrap import indent
 from fastapi import FastAPI,Request,Response, HTTPException
 import json
 from pydantic import BaseModel
@@ -9,7 +10,7 @@ import requests
 import pandas as pd
 import csv
 from prisma import Prisma
-from prisma.models import Item, Container as PrismaContainer, Zone
+from prisma.models import Item, Container as PrismaContainer, Zone, Placement
 from datetime import datetime
 
 import subprocess
@@ -112,6 +113,8 @@ class ContainerImportRequest(BaseModel):
     fileUrl: str
 
 containerState : List[Container] = []
+
+# placements: List[dict] = []
 
 @app.post("/api/import/containers")
 def import_containers(data: ContainerImportRequest):
@@ -225,9 +228,9 @@ consumables
     
 
 @app.post("/api/placement")
-async def placement(date: PlacementRequest):
-    items = date.items
-    containers = date.containers
+async def placement(data: PlacementRequest):
+    items = data.items
+    containers = data.containers
 
     for i in items:
         i_data = {
@@ -352,6 +355,31 @@ async def placement(date: PlacementRequest):
 
         containerState.append(newContainer)
 
+    placements = output_data.get("placements", [])
+
+    print(f"placements: {placements}")
+
+    for placement in placements:
+        placement_data = {
+            "containerId": placement["containerId"],
+            "itemId": placement["itemId"],
+            "startPos": json.dumps({
+                "x": placement["startPos"][0],
+                "y": placement["startPos"][1],
+                "z": placement["startPos"][2],
+            }),
+            "endPos": json.dumps({
+                "x": placement["endPos"][0],
+                "y": placement["endPos"][1],
+                "z": placement["endPos"][2],
+            }),
+        }
+        try:
+            created_placement = await prisma.placement.create(data=placement_data) # type: ignore
+            print(f"Created Placement: {created_placement}")
+        except Exception as e:
+            print(f"Error creating placement: {e}")
+
     print(f"new container state: {containerState}")
     output_refined = {
         "placements" : output_data["placements"],
@@ -365,21 +393,123 @@ async def placement(date: PlacementRequest):
 async def search(itemId: Optional[str] = None, itemName: Optional[str] = None, userId: Optional[str] = None):
     if not itemId and not itemName:
         raise HTTPException(status_code=400, detail="Either itemId or itemName must be provided")
-    
-    try:
-        if itemId:
-            item = await prisma.item.find_first(where={"itemId": itemId})
-        # elif itemName:
-        #     item = await prisma.item.find_first(where={"name": itemName})
-        if not item:
-            raise HTTPException(status_code=404, detail="Item not found")
-        
-        return {
-            "status": "success",
-            "item": item.dict()
+
+    if itemId:
+        item = await prisma.item.find_first(where={"itemId": itemId})
+    elif itemName:
+        item = await prisma.item.find_first(where={"name": itemName})
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    # i_data = {
+    #     "itemId": item.itemId,
+    #     "name": item.name,
+    #     "width": item.width,
+    #     "depth": item.depth,
+    #     "height": item.height,
+    #     "priority": item.priority,
+    #     "expiryDate": item.expiryDate,
+    #     "usageLimit": item.usageLimit,
+    #     "preferredZone": item.preferredZone,
+    #     "startPos": None,
+    # }
+
+    placements = await prisma.placement.find_first(where={"itemId": item.itemId})
+    print(f"placements: {placements}")
+
+    containerId = placements.containerId if placements else None
+
+    placements1 = []
+    # container = []
+    item_ids = []
+    item_start_pos_map = {}
+
+    if placements:
+        placements1 = await prisma.placement.find_many(where={"containerId": placements.containerId})
+        for placement in placements1:
+            item_ids.append(placement.itemId)
+            item_start_pos_map[placement.itemId] = placement.startPos
+
+        containerData = await prisma.container.find_first(where={"containerId": placements.containerId})
+        if containerData:
+            container = {
+                "containerId" : containerData.containerId,
+                "zone" : containerData.zone,
+                "width" : containerData.width,
+                "depth" : containerData.depth,
+                "height" : containerData.height,
+            }
+
+    print(f"placements1: {placements1}")
+    print(f"Container ID: {containerId}")
+    print(f"Container: {container}")
+    print(type(container))
+    print(f"Item Start Position Map: {item_start_pos_map}")
+
+    item_data = []
+
+    # item = await prisma.item.find_first(where={"itemId": itemId})
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    for x in item_ids:
+        item = await prisma.item.find_first(where={"itemId": x})
+        if item:
+            i = {
+                "itemId": item.itemId,
+                "name": item.name,
+                "width": item.width,
+                "depth": item.depth,
+                "height": item.height,
+                "startPos": item_start_pos_map[x],
+            }
+            item_data.append(i)
+        else:
+            print(f"Item with ID {x} not found in the database.")
+    print(f"item data: {item_data}")
+
+    if container:
+        container_data = {
+            "containerId": container.get("containerId", ""),
+            "zone": container.get("zone", ""),
+            "width": container.get("width", 0),
+            "depth": container.get("depth", 0),
+            "height": container.get("height", 0),
+            "items": item_data
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    else:
+        raise HTTPException(status_code=404, detail="Container not found")
+
+    input_json = json.dumps({
+        "container": container_data,
+        "itemId": itemId
+    }, indent=4)
+
+    command = "g++ -std=c++20 final_cpp_codes/retrievalPathPlanning.cpp -o final_cpp_codes/retrievalPathPlanning && ./final_cpp_codes/retrievalPathPlanning"
+    process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+    stdout, stderr = process.communicate(input=input_json)
+
+    print("C++ Program Output:", stdout)
+    print("C++ Program Errors:", stderr)
+
+    stdout = stdout.strip()
+
+    if not stdout:
+        raise HTTPException(status_code=500, detail="C++ program did not return any output. Check for errors.")
+
+    print("-" * 50, stdout)
+    stdout = stdout.replace('\\n', '\n').replace('\\\"', '\"')
+    stdout = re.sub(r'\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})', r'', stdout)
+
+    try:
+        output_data = json.loads(stdout)
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
+        print(f"Problematic JSON: {stdout}")
+        raise HTTPException(status_code=500, detail=f"Invalid JSON response from algorithm: {str(e)}")
+
+    return {"status": "success", "found": container, "item": item, "message": output_data}
+
 
 @app.post("/api/retrieve")
 #data:RetrieveRequest
@@ -463,12 +593,20 @@ def waste_identify():
     pass
 
 @app.post("/api/waste/return‐plan")
-#data:WasteReturnPlanRequest
-def waste_return_plan():
-    print("innjjjj")
+def waste_return_plan(data:WasteReturnPlanRequest):
+    # data = json.load(str(data))
+    with open("final_cpp_codes/ReturnPlan.json", "w") as f:
+        content = json.dumps({
+            "undockingContainerId": data.undockingContainerId,
+            "undockingDate": data.undockingDate,
+            "maxWeight": data.maxWeight
+        }, indent=4)
+        f.write(content)
+        print("Success")
     command = "g++ -std=c++20 final_cpp_codes/wasteManagement.cpp -o final_cpp_codes/wasteManagement && ./final_cpp_codes/wasteManagement"
     process = subprocess.Popen(command,stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
-    input_data = """3
+    input_data = """
+3
 contA
 Crew Quarters
 100 85 200
@@ -538,8 +676,22 @@ contA
 """
 
     stdout, stderr = process.communicate(input_data)
-    print(stdout,stderr)
+    
+    # return_plan_response = json.loads(stdout)
+    print(stdout)
+    # Extract JSON content after "Generating return plan..."
+    try:
+        json_start_index = stdout.find("Generating return plan...") + len("Generating return plan...")
+        json_content = stdout[json_start_index:].strip()
+        
+        # Parse the extracted content as JSON
+        return_plan_response = json.loads(json_content)
+        return return_plan_response
+    except Exception as e:
+        print(f"Error parsing waste return plan: {e}")
+        return Response(content=f"Error parsing waste return plan: {str(e)}", status_code=500)
     return Response(stdout)
+
 
 @app.post("/api/waste/complete‐undocking")
 def waste_complete_undocking(data:WasteCompleteUndocking):
