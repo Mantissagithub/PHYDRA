@@ -11,7 +11,7 @@ import pandas as pd
 import csv
 from prisma import Prisma
 from prisma.models import Item, Container as PrismaContainer, Zone, Placement
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 import subprocess
 import re
@@ -20,6 +20,7 @@ prisma = Prisma()
 
 app = FastAPI()
 
+curr_date = date.today()
 
 @app.get("/")
 def welcome():
@@ -585,8 +586,126 @@ async def retrieve(data:RetrieveRequest):
 
 
 @app.post("/api/place")
-def place(data:PlaceRequest):
-    pass
+async def place(data:PlaceRequest):
+#     {
+# "itemId": "string",
+# "userId": "string",
+# "timestamp": "string", // ISO format
+# "containerId": "string", // Where the item is kept
+# "position": {
+# "startCoordinates": {
+# "width": number,
+# "depth": number,
+# "height": number
+# },
+# "endCoordinates": {
+# "width": number,
+# "depth": number,
+# "height": number
+# }
+# }
+# }
+    itemId = data.itemId
+    userId = data.userId
+    timestamp1 = data.timestamp
+    containerId = data.containerId
+    startCoordinates = data.position.startCoordinates
+
+    startCoo = {
+        "x" : startCoordinates.width,
+        "y" : startCoordinates.depth,
+        "z" :startCoordinates.height
+    }
+
+    endCoordinates = data.position.endCoordinates
+
+    endCoo = {
+        "x" : endCoordinates.width,
+        "y" : endCoordinates.depth,
+        "z" : endCoordinates.height
+    }
+
+    item_to_retrieve = {
+        "itemId" : itemId,
+        "userId" : userId,
+        "timeStamp" : timestamp1,
+        "containerId" : containerId,
+        "startCoordinates" : startCoo,
+        "endCoordinates" : endCoo
+    }
+
+    # print(f"Item {itemId} placed by user {userId} at {timestamp} in container {containerId} from {startCoordinates} to {endCoordinates}")
+    
+    items = await prisma.item.find_many()
+    containers = await prisma.container.find_many()
+    placements = await prisma.placement.find_many()
+
+    item_data = []
+
+    for item in items:
+        i_data = {
+            "itemId" : item.itemId,
+            "name" : item.name,
+            "width" : item.width,
+            "depth" : item.depth,
+            "height" : item.height,
+            "priority" : item.priority,
+            "expiryDate" : item.expiryDate,
+            "usageLimit" : item.usageLimit,
+            "preferredZone" : item.preferredZone,
+        }
+
+        item_data.append(i_data)
+
+    container_data = []
+
+    for container in containers:
+        c_data = {
+            "containerId" : container.containerId,
+            "zone" : container.zone,
+            "width" : container.width,
+            "depth" : container.depth,
+            "height" : container.height
+        }
+
+        container_data.append(c_data)
+
+    placement_data = []
+
+    for placement in placements:
+        p_data = {
+            "containerId": placement.containerId,
+            "itemId": placement.itemId,
+            "startPos": {
+                "x": placement.startPos["x"],
+                "y": placement.startPos["y"],
+                "z": placement.startPos["z"],
+            },
+            "endPos": {
+                "x": placement.endPos["x"],
+                "y": placement.endPos["y"],
+                "z": placement.endPos["z"],
+            },
+        }
+
+        placement_data.append(p_data)
+
+    # print(f"Placement data : {placement_data}")
+
+    input_json = json.dumps({
+        "items": item_data,
+        "containers": container_data,
+        "placements": placement_data,
+        "priorityItem" : item_to_retrieve
+    }, indent=4)
+
+
+    command = "g++ -std=c++20 final_cpp_codes/placingItem.cpp -o final_cpp_codes/placingItem && ./final_cpp_codes/placingItem"
+    process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+    stdout, stderr = process.communicate(input=input_json)
+
+    print("C++ Program Output:", stdout)
+    print("C++ Program Errors:", stderr)
 
 @app.get("/api/waste/identify")
 def waste_identify():
@@ -698,8 +817,64 @@ def waste_complete_undocking(data:WasteCompleteUndocking):
     pass
 
 @app.post("/api/simulate/day")
-def simulate_day(data:SimulateDayRequest):
-    pass
+async def simulate_day(data: SimulateDayRequest):
+    num_days = data.numOfDays
+    target_date = None
+    
+    if data.toTimestamp:
+        target_date = datetime.fromisoformat(data.toTimestamp.split('T')[0]).date()
+        days_to_simulate = (target_date - curr_date).days
+        if days_to_simulate < 0:
+            raise HTTPException(status_code=400, detail="Target date must be in the future")
+    elif num_days:
+        days_to_simulate = num_days
+        target_date = curr_date + timedelta(days=days_to_simulate)
+    else:
+        raise HTTPException(status_code=400, detail="Either numOfDays or toTimestamp must be provided")
+    
+    items_to_use = data.itemsToBeUsedPerDay
+    
+    id_map = {item.itemId: item for item in items_to_use if item.itemId}
+    name_map = {item.name: item for item in items_to_use if item.name}
+    
+    all_items = await prisma.item.find_many()
+    
+    items_expired = []
+    items_depleted_today = []
+    items_used = []
+    
+    for item in all_items:
+        if item.expiryDate and item.expiryDate != "N/A":
+            expiry_date = datetime.strptime(item.expiryDate, "%Y-%m-%d").date()
+            if expiry_date <= target_date:
+                items_expired.append({
+                    "itemId": item.itemId,
+                    "name": item.name
+                })
+        
+        if item.itemId in id_map or item.name in name_map:
+            remaining_usage = item.usageLimit - days_to_simulate
+            items_used.append({
+                "itemId": item.itemId,
+                "name": item.name,
+                "remainingUses": max(0, remaining_usage)
+            })
+            
+            if item.usageLimit > 0 and remaining_usage <= 0:
+                items_depleted_today.append({
+                    "itemId": item.itemId,
+                    "name": item.name
+                })
+    
+    return {
+        "success": True,
+        "newDate": target_date.isoformat(),
+        "changes": {
+            "itemsUsed": items_used,
+            "itemsExpired": items_expired,
+            "itemsDepletedToday": items_depleted_today
+        }
+    }
 
 
 @app.post("/api/import/items")
