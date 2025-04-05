@@ -4,7 +4,6 @@ from sys import stdin
 from textwrap import indent
 from fastapi import FastAPI,Request,Response, HTTPException, UploadFile
 import json
-from py import log
 from pydantic import BaseModel
 # from sqlmodel import Field, Session, SQLModel, create_engine, select
 from typing import List, Optional, Type
@@ -1153,10 +1152,10 @@ async def get_zones():
     zones = await prisma.zone.find_many()
     
     print(zones)
-    zone_names = []
+    zone_names = set()
     for zone in zones:
-        zone_names.append(zone.name)
-    return Response(json.dumps({"Response":"SUCCESS","zones":zone_names}))
+        zone_names.add(zone.name)
+    return Response(json.dumps({"Response":"SUCCESS","zones":list(zone_names)}))
 
 @app.get("/api/get-items")
 async def get_items(data:GetItems):
