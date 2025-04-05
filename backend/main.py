@@ -2,8 +2,9 @@ from hmac import new
 from os import times
 from sys import stdin
 from textwrap import indent
-from fastapi import FastAPI,Request,Response, HTTPException
+from fastapi import FastAPI,Request,Response, HTTPException, UploadFile
 import json
+from py import log
 from pydantic import BaseModel
 # from sqlmodel import Field, Session, SQLModel, create_engine, select
 from typing import List, Optional, Type
@@ -11,7 +12,7 @@ import requests
 import pandas as pd
 import csv
 from prisma import Prisma
-from prisma.models import Item, Container as PrismaContainer, Zone, Placement
+from prisma.models import Item, Container as PrismaContainer, Zone, Placement, Log
 from datetime import datetime, date, timedelta
 
 import subprocess
@@ -19,6 +20,7 @@ import re
 
 from sympy import content
 from tomlkit import item
+from fastapi.responses import FileResponse
 
 prisma = Prisma()
 
@@ -422,6 +424,11 @@ async def retrieve(data: RetrieveRequest):
             "timestamp": data.timestamp
         }
 
+        placements = item.placement.find_first(where={"itemId": data.itemId})
+        print(f"placements: {placements}")
+
+        containerId = placements.containerId if placements else None
+
         itemThing = await prisma.item.find_first(where={"itemId": data.itemId})
         print(f"itemThing: {itemThing}")
         if not itemThing:
@@ -456,6 +463,23 @@ async def retrieve(data: RetrieveRequest):
             "usageLimit": itemThing.usageLimit,
             "preferredZone": itemThing.preferredZone
         }
+
+        log_data = {
+            "userId": data.userId,
+            "actionType" : "retrieve",
+            "itemId": data.itemId,
+            "details" : {
+                "fromContainer" : containerId,
+                "toContainer" : None,
+                "reason" : "Item retrieved"
+            }
+        }
+
+        xm = await prisma.log.create(data=log_data) #type: ignore
+        print(f"Log created: {xm}")
+
+        if not xm:
+            raise HTTPException(status_code=500, detail="Log creation failed")
 
         return {
             "status": "success",
@@ -588,6 +612,24 @@ async def place(data:PlaceRequest):
     print("C++ Program Output:", stdout)
     print("C++ Program Errors:", stderr)
 
+    log_data = {
+        "timestamp": datetime.now().isoformat(),
+        "userId" : data.userId,
+        "actionType" : "placed",
+        "itemId" : data.itemId,
+        "details" : {
+            "fromContainer" : None,
+            "toContainer" : data.containerId,
+            "reason" : "Item placed in container"
+        }
+    }
+
+    xm = await prisma.log.create(data=log_data) #type: ignore
+    print(f"Log created: {xm}")
+    
+    if not xm:
+        raise HTTPException(status_code=500, detail="Log creation failed")
+
     return {
         "status": "success",
         "message": f"Item {data.itemId} placed by user {data.userId} at {data.timestamp} in container {data.containerId} from {data.position.startCoordinates} to {data.position.endCoordinates}",
@@ -643,6 +685,26 @@ async def waste_identify():
 
                 waste_items_data.append(thing)
 
+                log_data = {
+                    "timestamp": datetime.now().isoformat(),
+                    "userId" : "system",
+                    "actionType" : "waste identified",
+                    "itemId" : item.itemId,
+                    "details" : {
+                        "fromContainer" : placements.containerId,
+                        "toContainer" : None,
+                        "reason" : reason
+                    }
+                }
+
+                xm = await prisma.log.create(data=log_data) #type: ignore
+                print(f"Log created: {xm}")
+
+                if not xm:
+                    raise HTTPException(status_code=500, detail="Log creation failed")
+    
+    
+
     return {
         "status": "success",
         "wasteItems": waste_items_data}
@@ -668,14 +730,10 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
     if not placements:
         raise HTTPException(status_code=404, detail="Placements not found")
     item_ids = [placement.itemId for placement in placements]
-    # print(f"Item ids: {item_ids}")
-    # print(f"Placements: {placements}")
-    # print(f"Container: {container}")
 
     items = []
     for item_id in item_ids:
         item = await prisma.item.find_first(where={"itemId": item_id})
-        # print(f"Item: {item}")
         if item:
             i_data = {
                 "itemId": item.itemId,
@@ -690,7 +748,6 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
                 "preferredZone": item.preferredZone
             }
             items.append(i_data)
-
 
     items_to_remove = []
     total_removed_weight = 0.0
@@ -711,6 +768,24 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
             await prisma.placement.delete(where={"id": placement.id})
         await prisma.item.delete(where={"itemId": item["itemId"]})
 
+        # Add log entry for the removed item
+        log_data = {
+            "timestamp": datetime.now().isoformat(),
+            "userId": "system",  # Assuming the system is performing the operation
+            "actionType": "return-plan",
+            "itemId": item["itemId"],
+            "details": {
+                "fromContainer": container_id,
+                "toContainer": None,
+                "reason": "Item removed as part of return plan"
+            }
+        }
+        try:
+            created_log = await prisma.log.create(data=log_data)  # type: ignore
+            print(f"Log created: {created_log}")
+        except Exception as e:
+            print(f"Error creating log: {e}")
+
     remaining_items = [item for item in items if item not in items_to_remove]
     container_data = [
         {
@@ -727,13 +802,13 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
         "items": remaining_items,
         "containers": container_data
     }, indent=4)
-    print("*",input_json)
+    print("*", input_json)
     command = "g++ -std=c++20 final_cpp_codes/3dBinPakckingAlgo.cpp -o final_cpp_codes/3dBinPakckingAlgo && ./final_cpp_codes/3dBinPakckingAlgo"
     process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
     stdout, stderr = process.communicate(input=input_json)
 
     print("3d algo C++ Program Output:", stdout)
-    print("3d algoC++ Program Errors:", stderr)
+    print("3d algo C++ Program Errors:", stderr)
 
     if not stdout:
         raise HTTPException(status_code=500, detail="C++ program did not return any output. Check for errors.")
@@ -741,7 +816,7 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
     try:
         output_data = json.loads(stdout)
         print(type(output_data))
-        print(f"Ouput data: {output_data}")
+        print(f"Output data: {output_data}")
     except json.JSONDecodeError as e:
         print(f"JSON decode error: {e}")
         print(f"Problematic JSON: {stdout}")
@@ -754,15 +829,15 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
         if placement:
             x_data = {
                 "itemId": item["itemId"],
-                "name" : item["name"],
+                "name": item["name"],
                 "startPos": {
                     "x": placement.startPos["x"],
                     "y": placement.startPos["y"],
                     "z": placement.startPos["z"]
                 },
-                "width" : item["width"],
-                "depth" : item["depth"],
-                "height" : item["height"],
+                "width": item["width"],
+                "depth": item["depth"],
+                "height": item["height"],
             }
 
             items_to_remove_with_coordinates.append(x_data)
@@ -780,7 +855,7 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
             "itemId": item["itemId"]
         }, indent=4)
 
-        print("*"*50,"\nInput JSON:", input_json)
+        print("*" * 50, "\nInput JSON:", input_json)
 
         command = "g++ -std=c++20 final_cpp_codes/retrievalPathPlanning.cpp -o final_cpp_codes/retrievalPathPlanning && ./final_cpp_codes/retrievalPathPlanning"
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
@@ -920,11 +995,13 @@ async def simulate_day(data: SimulateDayRequest):
 
 
 @app.post("/api/import/items")
-async def import_items():
+async def import_items(file:UploadFile):
 # item_id,name,width_cm,depth_cm,height_cm,mass_kg,priority,expiry_date,usage_limit,preferred_zone
     count = 0
     with open("csv_data/input_items.csv", "r") as f:
-        reader = csv.reader(f)
+        contents = await file.read()
+        text_contents = contents.decode("utf-8").splitlines()
+        reader = csv.reader(text_contents)
         header = next(reader)
         for row in reader:
             count+=1
@@ -966,13 +1043,14 @@ async def import_items():
     return Response(content=f"Success: {count} items imported", media_type="text/plain")
 
 @app.post("/api/import/containers")
-async def import_containers():
+async def import_containers(file: UploadFile):
     zone_map = {}
     count = 0
-    with open("csv_data/containers.csv", "r") as f:
-        reader = csv.reader(f)
-        header = next(reader)
-        for row in reader:
+    contents = await file.read()
+    text_contents = contents.decode("utf-8").splitlines()
+    reader = csv.reader(text_contents)
+    header = next(reader)
+    for row in reader:
             count+=1
             zone = row[0]
             container_id = row[1]
@@ -1011,22 +1089,57 @@ async def import_containers():
         except Exception as e:
             print(f"Error creating zone: {e}")
     
-    return Response(json.dumps({"Success": True, "content": f"Success: {count} containers imported"}))
-
+    return Response(json.dumps({"content": f"Success: {count} containers imported"}), media_type="application/json")
 
 
 @app.get("/api/export/arrangement")
-def export_arrangement(data):
-    pass
+async def export_arrangement():
+    placements = await prisma.placement.find_many()
+    if not placements:
+        raise HTTPException(status_code=404, detail="No placements found")
 
+    file_path = "csv_data/placements.csv"
+    with open(file_path, mode="w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Item ID", "Container ID", "Coordinates (W1,D1,H1)", "Coordinates (W2,D2,H2)"])
+        for p in placements:
+            writer.writerow([
+                p.itemId,
+                p.containerId,
+                f"({p.startPos['x']},{p.startPos['y']},{p.startPos['z']})",
+                f"({p.endPos['x']},{p.endPos['y']},{p.endPos['z']})"
+            ])
 
-class LogsRequest(BaseModel):
-    startDate: str  # ISO format
-    endDate: str  # ISO format
+    return FileResponse(file_path, media_type="text/csv", filename="/csv_data/placements.csv")
+
+class LogWhereInput(BaseModel):
+    createdAt: Optional[dict[str, datetime]] = None
     itemId: Optional[str] = None
     userId: Optional[str] = None
-    actionType: Optional[str] = None  # "placement", "retrieval", "rearrangement", "disposal"
+    actionType: Optional[str] = None
 
 @app.get("/api/logs")
+class LogsRequest(BaseModel):
+    startDate: str
+    endDate: str
+    itemId: Optional[str] = None
+    userId: Optional[str] = None
+    actionType: Optional[str] = None
+
 def logs(request: LogsRequest):
-    pass
+    start_date = datetime.fromisoformat(request.startDate)
+    end_date = datetime.fromisoformat(request.endDate)
+    item_id = request.itemId
+    user_id = request.userId
+    action_type = request.actionType
+
+    where = LogWhereInput(
+        createdAt={"gte": start_date, "lte": end_date} if start_date and end_date else None,
+        itemId=item_id,
+        userId=user_id,
+        actionType=action_type
+    )
+
+    logs = prisma.log.find_many(where=where.dict(exclude_none=True)) #type: ignore
+    return logs
+

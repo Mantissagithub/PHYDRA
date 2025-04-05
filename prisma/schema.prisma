@@ -58,3 +58,12 @@ model Placement {
   updatedAt   DateTime @updatedAt
 
 }
+
+model Log {
+  id          String   @id @default(uuid()) @map("_id")
+  timestamp   DateTime @default(now())
+  userId      String
+  actionType  String  
+  itemId      String
+  details     Json    
+}
