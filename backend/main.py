@@ -24,6 +24,7 @@ prisma = Prisma()
 
 app = FastAPI()
 
+curr_date_iso_format = date.today().isoformat()
 curr_date = date.today()
 
 @app.get("/")
@@ -140,7 +141,10 @@ async def placement(data: PlacementRequest):
         }
 
         try:
-            created_item = await prisma.item.create(data=i_data)  # type: ignore
+            existing_item = await prisma.item.find_first(where={"itemId": i.itemId})  # type: ignore
+            if not existing_item:
+                created_item = await prisma.item.create(data=i_data)  # type: ignore
+                print("Created Item")
             print("Created Item")
         except Exception as e:
             print(f"Error creating item: {e}")
@@ -154,7 +158,7 @@ async def placement(data: PlacementRequest):
                 "depth": item.itemDepth,
                 "height": item.itemHeight,
                 "priority": item.itemPriority,
-                "expiryDate": item.itemExpiryDate,
+                "expiryDate": "N/A" if item.itemExpiryDate is None else item.itemExpiryDate,
                 "usageLimit": item.itemUsageLimit,
                 "preferredZone": item.itemPreferredZone
             } for item in items
@@ -197,8 +201,10 @@ async def placement(data: PlacementRequest):
         }
 
         try:
-            created_container = await prisma.container.create(data=c_data)  # type: ignore
-            print("Created Container")
+            existing_container = await prisma.container.find_first(where={"containerId": c.containerId})  # type: ignore
+            if not existing_container:
+                created_container = await prisma.container.create(data=c_data)  # type: ignore
+                print("Created Container")
         except Exception as e:
             print(f"Error creating container: {e}")
 
@@ -406,30 +412,36 @@ async def search(itemId: Optional[str] = None, itemName: Optional[str] = None, u
 
 
 @app.post("/api/retrieve")
-async def retrieve(data:RetrieveRequest):
+async def retrieve(data: RetrieveRequest):
     try:
         item_data = {
-            "itemId":data.itemId,
+            "itemId": data.itemId,
             "userId": data.userId,
             "timestamp": data.timestamp
         }
 
-        if(curr_date == item_data["timestamp"]):
-            itemThing = await prisma.item.find_first(where={"itemId": data.itemId})
-            if not itemThing:
-                raise HTTPException(status_code=404, detail="Item not found")
+        itemThing = await prisma.item.find_first(where={"itemId": data.itemId})
+        print(f"itemThing: {itemThing}")
+        if not itemThing:
+            raise HTTPException(status_code=404, detail="Item not found")
 
-            if itemThing.usageLimit >= 0:
-                await prisma.item.update(
-                where={"itemId": data.itemId},
-                data = {
-                    "usageLimit" : itemThing.usageLimit - 1
-                }
-            )
-        
-        # await prisma.item.delete(where={"itemId": data.itemId})
-        
+        if curr_date_iso_format == item_data["timestamp"]:
+            print(f"Item {data.itemId} retrieved by user {data.userId} at {datetime.now().isoformat()}")
+            if itemThing.usageLimit is not None and itemThing.usageLimit > 0:
+                updated_item = await prisma.item.update(
+                    where={"itemId": data.itemId},
+                    data={
+                        "usageLimit": itemThing.usageLimit - 1
+                    }
+                )
+                if updated_item:
+                    print(f"Updated usageLimit for item {data.itemId}: {updated_item.usageLimit}")
+                else:
+                    print(f"Failed to update usageLimit for item {data.itemId}")
+                # itemThing.usageLimit -= 1
+
         print(f"Item {data.itemId} retrieved by user {data.userId} at {datetime.now().isoformat()}")
+        print(f"Item usage limit: {itemThing.usageLimit}")
 
         itemData = {
             "itemId": itemThing.itemId,
@@ -439,14 +451,14 @@ async def retrieve(data:RetrieveRequest):
             "height": itemThing.height,
             "priority": itemThing.priority,
             "expiryDate": itemThing.expiryDate,
-            "usageLimit": itemThing.usageLimit-1,
+            "usageLimit": itemThing.usageLimit,
             "preferredZone": itemThing.preferredZone
         }
 
         return {
             "status": "success",
-            "message" : f"Item {data.itemId} retrieved by user {data.userId} at {datetime.now().isoformat()} and updated the usage limit",
-            "item": itemThing.dict()
+            "message": f"Item {data.itemId} retrieved by user {data.userId} at {datetime.now().isoformat()} and updated the usage limit",
+            "item": itemData
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
