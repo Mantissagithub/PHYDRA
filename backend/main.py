@@ -1162,21 +1162,18 @@ async def get_items(data:GetItems):
     container_id = data.containerId
     
     print(container_id)
-    
-    container_data = await prisma.container.find_many(where={"containerId":container_id})
-    
-    print(container_data)
+    placements = await prisma.placement.find_many(where={"containerId":container_id})
+    print(placements)
     items_ids = []
-    for container in container_data:
-        if container.itemsIds:
-            items_ids.extend(container.itemsIds)
+    for placement in placements:
+        item_data = await prisma.item.find_first(where={"itemId":placement.itemId})
+        if item_data:
+            items_ids.append({
+                "temId":placement.itemId,
+                "itemName":item_data.name
+            })
     print(items_ids)
-    items = []
-    if items_ids:
-        items = await prisma.item.find_many(where={"itemId": {"in": items_ids}})
-    print(items)
-
-    return Response(json.dumps({"Response":"Success","items":items}))
+    return Response(json.dumps({"Response":"Success","items":items_ids}))
 
 @app.get("/api/get-containers")
 async def get_containers(data:GetContainers):
@@ -1186,8 +1183,8 @@ async def get_containers(data:GetContainers):
     
     print(container_data)
     
-    containers = []
+    containers = set()
     for container in container_data:
-        containers.append(container.containerId)
+        containers.add(container.containerId)
     
-    return Response(json.dumps({"Response":"Success","Containers":str(containers)}))
+    return Response(json.dumps({"Response":"Success","Containers":str(list(containers))}))
