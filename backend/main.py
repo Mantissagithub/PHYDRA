@@ -1,4 +1,5 @@
 from hmac import new
+from os import times
 from sys import stdin
 from textwrap import indent
 from fastapi import FastAPI,Request,Response, HTTPException
@@ -17,6 +18,7 @@ import subprocess
 import re
 
 from sympy import content
+from tomlkit import item
 
 prisma = Prisma()
 
@@ -412,17 +414,18 @@ async def retrieve(data:RetrieveRequest):
             "timestamp": data.timestamp
         }
 
-        itemThing = await prisma.item.find_first(where={"itemId": data.itemId})
-        if not itemThing:
-            raise HTTPException(status_code=404, detail="Item not found")
+        if(curr_date == item_data["timestamp"]):
+            itemThing = await prisma.item.find_first(where={"itemId": data.itemId})
+            if not itemThing:
+                raise HTTPException(status_code=404, detail="Item not found")
 
-        if itemThing.usageLimit >= 0:
-            await prisma.item.update(
-            where={"itemId": data.itemId},
-            data = {
-                "usageLimit" : itemThing.usageLimit - 1
-            }
-        )
+            if itemThing.usageLimit >= 0:
+                await prisma.item.update(
+                where={"itemId": data.itemId},
+                data = {
+                    "usageLimit" : itemThing.usageLimit - 1
+                }
+            )
         
         # await prisma.item.delete(where={"itemId": data.itemId})
         
@@ -625,104 +628,26 @@ async def waste_identify():
         "wasteItems": waste_items_data}
 
 @app.post("/api/waste/return‐plan")
-def waste_return_plan(data:WasteReturnPlanRequest):
-    # data = json.load(str(data))
-    with open("final_cpp_codes/ReturnPlan.json", "w") as f:
-        content = json.dumps({
-            "undockingContainerId": data.undockingContainerId,
-            "undockingDate": data.undockingDate,
-            "maxWeight": data.maxWeight
-        }, indent=4)
-        f.write(content)
-        print("Success")
-    command = "g++ -std=c++20 final_cpp_codes/wasteManagement.cpp -o final_cpp_codes/wasteManagement && ./final_cpp_codes/wasteManagement"
-    process = subprocess.Popen(command,stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
-    input_data = """
-3
-contA
-Crew Quarters
-100 85 200
-contB
-Storage
-120 100 250
-contC
-Airlock
-80 70 150
-5
-001
-Expired Food Packet
-10 10 20
-2.5
-30
-2024-05-10
-10
-Crew Quarters
-002
-Damaged Oxygen Cylinder
-15 15 50
-10.0
-50
-N/A
-5
-Airlock
-003
-Broken First Aid Kit
-20 20 10
-1.2
-20
-2024-07-01
-2
-Storage
-004
-Used Battery Pack
-25 25 15
-3.5
-40
-N/A
-15
-Storage
-005
-Spoiled Water Container
-30 20 25
-5.0
-35
-2024-08-20
-7
-Crew Quarters
-5
-001
-contA
-5 10 15
-002
-contC
-10 20 30
-003
-contB
-15 25 35
-004
-contB
-20 30 40
-005
-contA
-25 35 45
-"""
+async def waste_return_plan(data:WasteReturnPlanRequest):
+    # class WasteReturnPlanRequest(BaseModel):
+    # undockingContainerId: str
+    # undockingDate: str  # ISO format
+    # maxWeight: float
+    containerId = data.undockingContainerId
+    undockingDate = data.undockingDate
+    maxWeight = data.maxWeight
 
-    stdout, stderr = process.communicate(input_data)
+    container = await prisma.container.find_first(where={"containerId": containerId})
+
+    if not container:
+        raise HTTPException(status_code=404, detail="Container not found")
+
+    zone = container.zone
+
+
+
     
-    # return_plan_response = json.loads(stdout)
-    print(stdout)
-    # Extract JSON content after "Generating return plan..."
-    try:
-        json_start_index = stdout.find("Generating return plan...") + len("Generating return plan...")
-        json_content = stdout[json_start_index:].strip()
-        
-        # Parse the extracted content as JSON
-        return_plan_response = json.loads(json_content)
-        return return_plan_response
-    except Exception as e:
-        print(f"Error parsing waste return plan: {e}")
-        return Response(content=f"Error parsing waste return plan: {str(e)}", status_code=500)
-    return Response(stdout)
+
 
 
 @app.post("/api/waste/complete‐undocking")
@@ -853,7 +778,7 @@ async def import_items():
 
 @app.post("/api/import/containers")
 async def import_containers():
-
+    zone_map = {}
     count = 0
     with open("csv_data/containers.csv", "r") as f:
         reader = csv.reader(f)
@@ -865,6 +790,10 @@ async def import_containers():
             width = float(row[2]) if row[2] else None
             depth = float(row[3]) if row[3] else None
             height = float(row[4]) if row[4] else None
+
+            if zone not in zone_map:
+                zone_map[zone] = []
+            zone_map[zone].append(container_id)
             container_data = {
                 "containerId": container_id,
                 "zone": zone,
@@ -874,10 +803,24 @@ async def import_containers():
             }
 
             try:
-                created_container = await prisma.container.create(data=container_data.dict()) #type: ignore
+                created_container = await prisma.container.create(data=container_data) #type: ignore
                 print("Created Container")
             except Exception as e:
                 print(f"Error creating container: {e}")
+
+    print(f"Zone Map: {zone_map}")
+
+    for zone_name, container_ids in zone_map.items():
+        zone_data = {
+            "name": zone_name,
+            "containersIds": container_ids
+        }
+
+        try:
+            created_zone = await prisma.zone.create(data=zone_data) #type: ignore
+            print("Created Zone")
+        except Exception as e:
+            print(f"Error creating zone: {e}")
     
     return {content: f"Success: {count} containers imported"}
 

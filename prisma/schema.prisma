@@ -35,7 +35,7 @@ model Item {
 model Container {
     id String @id @default(uuid()) @map("_id")
     containerId String @unique @map("containerId")
-    zone String
+    zone String @map("zone")
     width Int
     depth Int
     height Int
