@@ -1,2 +1,3 @@
 test.txt
 myenv
+**/__pycache__
