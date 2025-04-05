@@ -47,6 +47,7 @@ class PlacementItem(BaseModel):
     itemWidth: float
     itemDepth: float
     itemHeight: float
+    itemMass: float
     itemPriority: float
     itemExpiryDate: str
     itemUsageLimit: float
@@ -134,10 +135,11 @@ async def placement(data: PlacementRequest):
             "width": int(i.itemWidth),
             "depth": int(i.itemDepth),
             "height": int(i.itemHeight),
+            "mass":float(i.itemMass),
             "priority": int(i.itemPriority),
             "expiryDate": i.itemExpiryDate,
             "usageLimit": int(i.itemUsageLimit),
-            "preferredZone": i.itemPreferredZone,
+            "preferredZone": i.itemPreferredZone
         }
 
         try:
@@ -650,7 +652,6 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
     container_id = data.undockingContainerId
     undocking_date = data.undockingDate
     max_weight = data.maxWeight
-
     container = await prisma.container.find_first(where={"containerId": container_id})
     if not container:
         raise HTTPException(status_code=404, detail="Container not found")
@@ -667,11 +668,14 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
     if not placements:
         raise HTTPException(status_code=404, detail="Placements not found")
     item_ids = [placement.itemId for placement in placements]
+    # print(f"Item ids: {item_ids}")
+    # print(f"Placements: {placements}")
+    # print(f"Container: {container}")
 
     items = []
     for item_id in item_ids:
         item = await prisma.item.find_first(where={"itemId": item_id})
-        print(f"Item: {item}")
+        # print(f"Item: {item}")
         if item:
             i_data = {
                 "itemId": item.itemId,
@@ -723,13 +727,13 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
         "items": remaining_items,
         "containers": container_data
     }, indent=4)
-
+    print("*",input_json)
     command = "g++ -std=c++20 final_cpp_codes/3dBinPakckingAlgo.cpp -o final_cpp_codes/3dBinPakckingAlgo && ./final_cpp_codes/3dBinPakckingAlgo"
     process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
     stdout, stderr = process.communicate(input=input_json)
 
-    print("C++ Program Output:", stdout)
-    print("C++ Program Errors:", stderr)
+    print("3d algo C++ Program Output:", stdout)
+    print("3d algoC++ Program Errors:", stderr)
 
     if not stdout:
         raise HTTPException(status_code=500, detail="C++ program did not return any output. Check for errors.")
@@ -776,14 +780,14 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
             "itemId": item["itemId"]
         }, indent=4)
 
-        print("Input JSON:", input_json)
+        print("*"*50,"\nInput JSON:", input_json)
 
         command = "g++ -std=c++20 final_cpp_codes/retrievalPathPlanning.cpp -o final_cpp_codes/retrievalPathPlanning && ./final_cpp_codes/retrievalPathPlanning"
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
         stdout, stderr = process.communicate(input=input_json)
 
-        print("C++ Retrieval Output:", stdout)
-        print("C++ Retrieval Errors:", stderr)
+        print("retrieval C++ Retrieval Output:", stdout)
+        print("retrieval C++ Retrieval Errors:", stderr)
 
         if not stdout:
             raise HTTPException(status_code=500, detail="C++ retrieval program did not return any output. Check for errors.")
@@ -1007,7 +1011,7 @@ async def import_containers():
         except Exception as e:
             print(f"Error creating zone: {e}")
     
-    return {content: f"Success: {count} containers imported"}
+    return Response(json.dumps({"Success": True, "content": f"Success: {count} containers imported"}))
 
 
 

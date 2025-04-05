@@ -1,19 +1,13 @@
 "use client"
 import { motion } from "framer-motion"
 
-// Import components
 import CrewQuarters from "./crewQuarters"
-// import CrewQuarters from './crewQuarters';
 import AirLock from "./airLock"
-// import AirLock from './airLock';
-// import laboratory from './laboratory';
 import Laboratory from "./laboratory"
-// import engineeringBay from './engineeringBay';
 import EngineeringBay from "./engineeringBay"
-// import wasteManagement from './wasteManagement';
 import WasteManagement from "./wasteManagement"
-// import dockingArea from './dockingArea';
 import DockingArea from "./dockingArea"
+import Navbar from "./navBar"
 
 const SpaceStationLayout = () => {
   // Container animation
@@ -95,6 +89,27 @@ const SpaceStationLayout = () => {
           <div className="absolute top-2/3 right-1/4 w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl"></div>
         </div>
       </div>
+
+      {/* Navbar */}
+        <div
+          className="absolute top-0 left-0 w-full p-4 z-50 bg-#15112b bg-opacity-50 rounded-lg shadow-lg"
+          style={{
+            transform: "translateZ(100px)",
+            perspective: "1000px",
+          }}
+        >
+          <Navbar />
+        </div>
+        {/* Animated glow effect */}
+      <motion.div
+        className="absolute top-1/2 left-1/2 w-96 h-96 rounded-full bg-cyan-500/20 blur-3xl"
+        variants={glowPulse}
+        initial="initial"
+        animate="animate"
+        style={{
+          transform: "translate(-50%, -50%)",
+        }}
+      ></motion.div>
 
       {/* Main container */}
       <motion.div

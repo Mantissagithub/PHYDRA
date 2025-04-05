@@ -594,7 +594,6 @@ int main() {
 
     json containersData = json::parse(inputData)["containers"];
     json itemsData = json::parse(inputData)["items"];
-
     vector<Item> items;
     vector<Container> containers;
     for (const auto& itemData : itemsData) {
