@@ -1143,3 +1143,52 @@ def logs(request: LogsRequest):
     logs = prisma.log.find_many(where=where.dict(exclude_none=True)) #type: ignore
     return logs
 
+class GetContainers(BaseModel):
+    zoneName:str
+class GetItems(BaseModel):
+    containerId:str
+    
+@app.get("/api/get-zones")
+async def get_zones():
+    zones = await prisma.zone.find_many()
+    
+    print(zones)
+    zone_names = []
+    for zone in zones:
+        zone_names.append(zone.name)
+    return Response(json.dumps({"Response":"SUCCESS","zones":zone_names}))
+
+@app.get("/api/get-items")
+async def get_items(data:GetItems):
+    container_id = data.containerId
+    
+    print(container_id)
+    
+    container_data = await prisma.container.find_many(where={"containerId":container_id})
+    
+    print(container_data)
+    items_ids = []
+    for container in container_data:
+        if container.itemsIds:
+            items_ids.extend(container.itemsIds)
+    print(items_ids)
+    items = []
+    if items_ids:
+        items = await prisma.item.find_many(where={"itemId": {"in": items_ids}})
+    print(items)
+
+    return Response(json.dumps({"Response":"Success","items":items}))
+
+@app.get("/api/get-containers")
+async def get_containers(data:GetContainers):
+    zone_name = data.zoneName
+
+    container_data = await prisma.container.find_many(where={"zone": zone_name})
+    
+    print(container_data)
+    
+    containers = []
+    for container in container_data:
+        containers.append(container.containerId)
+    
+    return Response(json.dumps({"Response":"Success","Containers":str(containers)}))

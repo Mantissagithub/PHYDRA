@@ -44,7 +44,7 @@ model Container {
 
 model Zone{
     id String @id @default(uuid()) @map("_id")
-    name String
+    name String @map("name")
     containersIds String[]
 }
 
