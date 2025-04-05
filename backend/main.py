@@ -6,7 +6,7 @@ from fastapi import FastAPI,Request,Response, HTTPException
 import json
 from pydantic import BaseModel
 # from sqlmodel import Field, Session, SQLModel, create_engine, select
-from typing import List, Optional, final
+from typing import List, Optional, Type
 import requests
 import pandas as pd
 import csv
@@ -628,27 +628,151 @@ async def waste_identify():
         "wasteItems": waste_items_data}
 
 @app.post("/api/waste/return‐plan")
-async def waste_return_plan(data:WasteReturnPlanRequest):
-    # class WasteReturnPlanRequest(BaseModel):
-    # undockingContainerId: str
-    # undockingDate: str  # ISO format
-    # maxWeight: float
-    containerId = data.undockingContainerId
-    undockingDate = data.undockingDate
-    maxWeight = data.maxWeight
+async def waste_return_plan(data: WasteReturnPlanRequest):
+    container_id = data.undockingContainerId
+    undocking_date = data.undockingDate
+    max_weight = data.maxWeight
 
-    container = await prisma.container.find_first(where={"containerId": containerId})
-
+    container = await prisma.container.find_first(where={"containerId": container_id})
     if not container:
         raise HTTPException(status_code=404, detail="Container not found")
 
-    zone = container.zone
+    zone = await prisma.zone.find_first(where={"name": container.zone})
+    if not zone:
+        raise HTTPException(status_code=404, detail="Zone not found")
 
+    containers = await prisma.container.find_many(where={"zone": zone.name})
 
+    placements = await prisma.placement.find_many(where={"containerId": container_id})
+    item_ids = [placement.itemId for placement in placements]
 
-    
+    items = []
+    for item_id in item_ids:
+        item = await prisma.item.find_first(where={"itemId": item_id})
+        if item:
+            items.append({
+                "itemId": item.itemId,
+                "name": item.name,
+                "width": item.width,
+                "depth": item.depth,
+                "height": item.height,
+                "mass": item.mass,
+                "priority": item.priority,
+                "expiryDate": item.expiryDate,
+                "usageLimit": item.usageLimit,
+                "preferredZone": item.preferredZone
+            })
 
+    items_to_remove = []
+    total_removed_weight = 0.0
 
+    items.sort(key=lambda x: x["priority"], reverse=True)
+
+    for item in items:
+        if total_removed_weight + item["mass"] <= max_weight:
+            items_to_remove.append(item)
+            total_removed_weight += item["mass"]
+        else:
+            break
+
+    for item in items_to_remove:
+        placement = await prisma.placement.find_first(where={"itemId": item["itemId"]})
+        if placement:
+            await prisma.placement.delete(where={"id": placement.id})
+        await prisma.item.delete(where={"itemId": item["itemId"]})
+
+    remaining_items = [item for item in items if item not in items_to_remove]
+    container_data = [
+        {
+            "containerId": c.containerId,
+            "zone": c.zone,
+            "width": c.width,
+            "depth": c.depth,
+            "height": c.height
+        }
+        for c in containers if c.containerId != container_id 
+    ]
+
+    input_json = json.dumps({
+        "items": remaining_items,
+        "containers": container_data
+    }, indent=4)
+
+    command = "g++ -std=c++20 final_cpp_codes/3dBinPakckingAlgo.cpp -o final_cpp_codes/3dBinPakckingAlgo && ./final_cpp_codes/3dBinPakckingAlgo"
+    process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+    stdout, stderr = process.communicate(input=input_json)
+
+    print("C++ Program Output:", stdout)
+    print("C++ Program Errors:", stderr)
+
+    if not stdout:
+        raise HTTPException(status_code=500, detail="C++ program did not return any output. Check for errors.")
+
+    try:
+        output_data = json.loads(stdout)
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
+        print(f"Problematic JSON: {stdout}")
+        raise HTTPException(status_code=500, detail=f"Invalid JSON response from algorithm: {str(e)}")
+
+    retrieval_steps = []
+    for item in items_to_remove:
+        input_json = json.dumps({
+            "container": {
+                "containerId": container.containerId,
+                "zone": container.zone,
+                "width": container.width,
+                "depth": container.depth,
+                "height": container.height,
+                "items": items
+            },
+            "itemId": item["itemId"]
+        }, indent=4)
+
+        command = "g++ -std=c++20 final_cpp_codes/retrievalPathPlanning.cpp -o final_cpp_codes/retrievalPathPlanning && ./final_cpp_codes/retrievalPathPlanning"
+        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+        stdout, stderr = process.communicate(input=input_json)
+
+        print("C++ Retrieval Output:", stdout)
+        print("C++ Retrieval Errors:", stderr)
+
+        if not stdout:
+            raise HTTPException(status_code=500, detail="C++ retrieval program did not return any output. Check for errors.")
+
+        try:
+            retrieval_output = json.loads(stdout)
+            retrieval_steps.extend(retrieval_output.get("steps", []))
+        except json.JSONDecodeError as e:
+            print(f"JSON decode error: {e}")
+            print(f"Problematic JSON: {stdout}")
+            raise HTTPException(status_code=500, detail=f"Invalid JSON response from retrieval algorithm: {str(e)}")
+
+    return_items = [
+        {
+            "itemId": item["itemId"],
+            "name": item["name"],
+            "reason": "Undocking"
+        }
+        for item in items_to_remove
+    ]
+
+    total_volume = sum(item["width"] * item["depth"] * item["height"] for item in items_to_remove)
+    total_weight = sum(item["mass"] for item in items_to_remove if item["mass"])
+
+    return_manifest = {
+        "undockingContainerId": container_id,
+        "undockingDate": undocking_date,
+        "returnItems": return_items,
+        "totalVolume": total_volume,
+        "totalWeight": total_weight
+    }
+
+    return {
+        "success": True,
+        "returnPlan": output_data.get("placements", []),
+        "retrievalSteps": retrieval_steps,
+        "returnManifest": return_manifest
+    }
 
 @app.post("/api/waste/complete‐undocking")
 async def waste_complete_undocking(data:WasteCompleteUndocking):
