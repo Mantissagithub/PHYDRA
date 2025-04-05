@@ -76,7 +76,7 @@ class SearchRequest(BaseModel):
 class RetrieveRequest(BaseModel):
     itemId:str
     userId:str
-    # timestamp:str
+    timestamp:str
 class Coordinates(BaseModel):
     width: float
     depth: float
@@ -404,73 +404,46 @@ async def search(itemId: Optional[str] = None, itemName: Optional[str] = None, u
 
 
 @app.post("/api/retrieve")
-#data:RetrieveRequest
-# def retrieve():
-#     command = "g++ -std=c++20 final_cpp_codes/retrievalPathPlanning.cpp -o final_cpp_codes/retrievalPathPlanning && ./final_cpp_codes/retrievalPathPlanning"
-#     process = subprocess.Popen(command,stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
-#     input_data = """3
-# contA
-# Crew Quarters
-# 100 85 200
-# 2
-# 001
-# Food Packet
-# 10 15 20
-# 10 10 20
-# 002
-# Oxygen Cylinder
-# 20 25 30
-# 15 15 50
-# contB
-# Airlock
-# 50 85 200
-# 1
-# 003
-# First Aid Kit
-# 5 10 15
-# 20 20 10
-# contC
-# Storage
-# 120 100 250
-# 3
-# 004
-# Water Container
-# 30 40 50
-# 25 25 40
-# 005
-# Tool Box
-# 35 45 55
-# 30 20 15
-# 006
-# Spare Parts
-# 40 50 60
-# 40 30 20
-# """
-
-    # stdout, stderr = process.communicate(input_data)
-    # print(stdout,stderr)
-    # return Response(stdout)
-
 async def retrieve(data:RetrieveRequest):
     try:
         item_data = {
             "itemId":data.itemId,
             "userId": data.userId,
-            # "timestamp": datetime.now().isoformat(),
+            "timestamp": data.timestamp
         }
 
-        item = await prisma.item.delete(where={"itemId": data.itemId})
-        if not item:
+        itemThing = await prisma.item.find_first(where={"itemId": data.itemId})
+        if not itemThing:
             raise HTTPException(status_code=404, detail="Item not found")
+
+        if itemThing.usageLimit >= 0:
+            await prisma.item.update(
+            where={"itemId": data.itemId},
+            data = {
+                "usageLimit" : itemThing.usageLimit - 1
+            }
+        )
         
         # await prisma.item.delete(where={"itemId": data.itemId})
         
         print(f"Item {data.itemId} retrieved by user {data.userId} at {datetime.now().isoformat()}")
 
+        itemData = {
+            "itemId": itemThing.itemId,
+            "name": itemThing.name,
+            "width": itemThing.width,
+            "depth": itemThing.depth,
+            "height": itemThing.height,
+            "priority": itemThing.priority,
+            "expiryDate": itemThing.expiryDate,
+            "usageLimit": itemThing.usageLimit-1,
+            "preferredZone": itemThing.preferredZone
+        }
+
         return {
             "status": "success",
-            "message" : f"Item {data.itemId} retrieved by user {data.userId} at {datetime.now().isoformat()}",
-            "item": item.dict()
+            "message" : f"Item {data.itemId} retrieved by user {data.userId} at {datetime.now().isoformat()} and updated the usage limit",
+            "item": itemThing.dict()
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
