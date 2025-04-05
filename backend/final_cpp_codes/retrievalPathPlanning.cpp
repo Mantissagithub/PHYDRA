@@ -491,48 +491,48 @@ int main() {
 
     string inputData = inputBuffer.str();
 
-    // cout<<"Input Data: "<<inputData<<endl;
+    cout<<"Input Data: "<<inputData<<endl;
 
     json inputJson = json::parse(inputData);
 
     json container = inputJson["container"];
 
-    // cout<<"Container: "<<container.dump(4)<<endl;
+    cout<<"Container: "<<container.dump(4)<<endl;
 
     string itemId = inputJson["itemId"];
 
-    // cout<<"Item ID: "<<itemId<<endl;
+    cout<<"Item ID: "<<itemId<<endl;
     
     Container parsedContainer(
         container["containerId"],
         container["zone"],
-        container["width"],
-        container["depth"],
-        container["height"]
+        container.value("width", 0),
+        container.value("depth", 0),
+        container.value("height", 0)
     );
 
-    // cout<<"Parsed Container: "<<parsedContainer.id<<endl;
+    cout<<"Parsed Container: "<<parsedContainer.id<<endl;
 
     vector<json> item_data;
 
     for (const auto& item : container["items"]) {
-        // cout<<"item: "<<item.dump(4)<<endl;
+        cout<<"item: "<<item.dump(4)<<endl;
         json itemDetails = item;
         if (!itemDetails.is_null()) {
             Item item_x = Item(
                 itemDetails["itemId"],
                 itemDetails["name"],
                 Position(
-                    itemDetails["startPos"]["x"],
-                    itemDetails["startPos"]["y"],
-                    itemDetails["startPos"]["z"]
+                    itemDetails["startPos"].value("x", 0),
+                    itemDetails["startPos"].value("y", 0),
+                    itemDetails["startPos"].value("z", 0)
                 ),
-                itemDetails["width"],
-                itemDetails["depth"],
-                itemDetails["height"]
+                itemDetails.value("width", 0),
+                itemDetails.value("depth", 0),
+                itemDetails.value("height", 0)
             );
 
-            // cout<<item_x<<endl;
+            cout<<item_x<<endl;
             parsedContainer.addItem(item_x);
         }
     }

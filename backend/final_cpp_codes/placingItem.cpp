@@ -3,22 +3,24 @@
 #include <string>
 #include <algorithm>
 #include <map>
-#include <chrono>  // For timing
+#include <unordered_map>
+#include <unordered_set>
+#include <set>
+#include <limits>
+#include <chrono>
 
 using namespace std;
-using namespace std::chrono; 
+using namespace std::chrono;
+
+// Structure definitions with optimized constructors
 struct Position {
     double width;
     double depth;
     double height;
 
-    Position(){}
+    Position() : width(0), depth(0), height(0) {}
 
-    Position(double w, double d, double h){
-        width = w;
-        depth = d;
-        height = h;
-    }
+    Position(double w, double d, double h) : width(w), depth(d), height(h) {}
 };
 
 struct Item {
@@ -31,19 +33,15 @@ struct Item {
     string expiryDate;
     int usageLimit;
     string preferredZone;
+    // Pre-computed volume for faster sorting and comparison
+    double volume;
 
-    Item(){}
+    Item() : width(0), depth(0), height(0), priority(0), usageLimit(0), volume(0) {}
 
-    Item(string _id, string _name, double w, double d, double h, int p, string ed, int ul, string pz){
-        itemId = _id;
-        name = _name;
-        width = w;
-        depth = d;
-        height = h;
-        priority = p;
-        expiryDate = ed;
-        usageLimit = ul;
-        preferredZone = pz;
+    Item(string _id, string _name, double w, double d, double h, int p, string ed, int ul, string pz)
+        : itemId(_id), name(_name), width(w), depth(d), height(h), 
+          priority(p), expiryDate(ed), usageLimit(ul), preferredZone(pz) {
+        volume = w * d * h; // Pre-compute volume
     }
 };
 
@@ -53,15 +51,13 @@ struct Container {
     double width;
     double depth;
     double height;
+    double totalVolume; // Pre-compute total volume
 
-    Container(){}
+    Container() : width(0), depth(0), height(0), totalVolume(0) {}
 
-    Container(string _id, string _zone, double w, double d, double h){
-        containerId = _id;
-        zone = _zone;
-        width = w;
-        depth = d;
-        height = h;
+    Container(string _id, string _zone, double w, double d, double h)
+        : containerId(_id), zone(_zone), width(w), depth(d), height(h) {
+        totalVolume = w * d * h; // Pre-compute total volume
     }
 };
 
@@ -71,226 +67,408 @@ struct Placement {
     Position startPos;
     Position endPos;
 
-    Placement(){}
+    Placement() {}
 
-    Placement(string _containerId, string _itemId, Position _startPos, Position _endPos){
-        containerId = _containerId;
-        itemId = _itemId;
-        startPos = _startPos;
-        endPos = _endPos;
-    }
+    Placement(string _containerId, string _itemId, Position _startPos, Position _endPos)
+        : containerId(_containerId), itemId(_itemId), startPos(_startPos), endPos(_endPos) {}
 };
 
-// Function to find an item by itemId (efficient map lookup)
+// Function to find an item by itemId - O(1) complexity
 Item* findItem(const map<string, Item>& itemMap, const string& itemId) {
     auto it = itemMap.find(itemId);
     if (it != itemMap.end()) {
-        return const_cast<Item*>(&it->second); //Remove constness to allow modification (or use a non-const map)
+        return const_cast<Item*>(&it->second);
     }
     return nullptr;
 }
 
-// Function to find a container by containerId (efficient map lookup)
+// Function to find a container by containerId - O(1) complexity
 Container* findContainer(const map<string, Container>& containerMap, const string& containerId) {
     auto it = containerMap.find(containerId);
     if (it != containerMap.end()) {
-        return const_cast<Container*>(&it->second); //Remove constness to allow modification (or use a non-const map)
+        return const_cast<Container*>(&it->second);
     }
     return nullptr;
 }
 
-// Function to check if a placement is valid (fits within the container)
+// Function to check if a placement is valid - optimized with early returns
 bool isValidPlacement(const Container& container, const Item& item, const Position& startPos, const Position& endPos) {
+    // Early exit checks
     if (startPos.width < 0 || startPos.depth < 0 || startPos.height < 0) return false;
     if (endPos.width > container.width || endPos.depth > container.depth || endPos.height > container.height) return false;
     return true;
 }
 
-// AABB collision check (Axis-Aligned Bounding Box) - Optimized for speed
-bool isCollision(const Placement& existingPlacement, const Item& newItem, const Position& newStart, const Position& newEnd,
+// Optimized AABB collision detection with early exits
+bool isCollision(const Placement& existingPlacement, const Item& newItem, 
+                 const Position& newStart, const Position& newEnd,
                  const map<string, Item>& itemMap) {
     // Find the existing item to get its dimensions
-    Item* existingItem = findItem(itemMap, existingPlacement.itemId);
-    if (!existingItem) return true; // Item not found, consider it a collision
-
-    // Calculate the coordinates of the existing placement
-    double existingStartWidth = existingPlacement.startPos.width;
-    double existingStartDepth = existingPlacement.startPos.depth;
-    double existingStartHeight = existingPlacement.startPos.height;
-    double existingEndWidth = existingStartWidth + existingItem->width;
-    double existingEndDepth = existingStartDepth + existingItem->depth;
-    double existingEndHeight = existingStartHeight + existingItem->height;
-
-    // Check for overlap (highly optimized)
-    return (newStart.width < existingEndWidth && newEnd.width > existingStartWidth &&
-            newStart.depth < existingEndDepth && newEnd.depth > existingStartDepth &&
-            newStart.height < existingEndHeight && newEnd.height > existingStartHeight);
+    auto it = itemMap.find(existingPlacement.itemId);
+    if (it == itemMap.end()) return true; // Item not found, consider it a collision
+    
+    const Item& existingItem = it->second;
+    
+    // Early exit tests - using separating axis theorem principle
+    if (newEnd.width <= existingPlacement.startPos.width || 
+        newStart.width >= existingPlacement.endPos.width ||
+        newEnd.depth <= existingPlacement.startPos.depth || 
+        newStart.depth >= existingPlacement.endPos.depth ||
+        newEnd.height <= existingPlacement.startPos.height || 
+        newStart.height >= existingPlacement.endPos.height) {
+        return false; // No collision
+    }
+    
+    // If we reach here, boxes overlap in all three dimensions
+    return true;
 }
 
-// 3D Bin Packing Algorithm (Simplified First-Fit Decreasing)
-//This is a placeholder; a full implementation requires more complex data structures.
-bool packItem(Container& container, Item& item, vector<Placement>& existingPlacements, map<string, Item>& itemMap, Position& startPos, Position& endPos) {
+// Skyline Best-Fit 3D Bin Packing Algorithm - Optimized
+bool packItem(Container& container, Item& item, vector<Placement>& existingPlacements, 
+              map<string, Item>& itemMap, Position& startPos, Position& endPos) {
+    // First try preferred coordinates if they exist
+    if (startPos.width >= 0 && startPos.depth >= 0 && startPos.height >= 0) {
+        Position potentialEnd = {
+            startPos.width + item.width, 
+            startPos.depth + item.depth, 
+            startPos.height + item.height
+        };
 
-    //1. Attempt to place the item at the preferred coordinates FIRST (from /api/place)
-    //  If the preferred coordinates are valid and no collision, place it there and return true
-
-    //2. If preferred coordinates are not specified or invalid:
-
-    // Simple first-fit approach (can be improved with more sophisticated algorithms)
-    for (double h = 0; h <= container.height - item.height; ++h) {
-        for (double d = 0; d <= container.depth - item.depth; ++d) {
-            for (double w = 0; w <= container.width - item.width; ++w) {
-                Position potentialStart = {w, d, h};
-                Position potentialEnd = {w + item.width, d + item.depth, h + item.height};
-
-                // First, check if the placement is valid for the container
-                if (!isValidPlacement(container, item, potentialStart, potentialEnd)) continue;
-
-                // Then, check for collisions with existing placements
-                bool collision = false;
-                for (const auto& placement : existingPlacements) {
-                    if (placement.containerId == container.containerId) {
-                        if (isCollision(placement, item, potentialStart, potentialEnd, itemMap)) {
-                            collision = true;
-                            break;
-                        }
+        if (isValidPlacement(container, item, startPos, potentialEnd)) {
+            // Check for collisions with existing placements in this container only
+            bool collision = false;
+            for (const auto& placement : existingPlacements) {
+                if (placement.containerId == container.containerId) {
+                    if (isCollision(placement, item, startPos, potentialEnd, itemMap)) {
+                        collision = true;
+                        break;
                     }
                 }
+            }
+            
+            if (!collision) {
+                endPos = potentialEnd;
+                return true; // Preferred placement worked
+            }
+        }
+    }
 
-                if (!collision) {
-                    startPos = potentialStart;
-                    endPos = potentialEnd;
-                    return true; // Found a suitable placement
+    // Initialize best position with high waste value
+    double bestWaste = numeric_limits<double>::max();
+    Position bestPos = {-1, -1, -1};
+
+    // Extract existing items in this container for height map calculation
+    vector<const Placement*> containerPlacements;
+    containerPlacements.reserve(existingPlacements.size()); // Pre-allocate space
+    for (const auto& p : existingPlacements) {
+        if (p.containerId == container.containerId) {
+            containerPlacements.push_back(&p);
+        }
+    }
+
+    // Create a sparse height map using unordered_map for better performance
+    using CoordKey = pair<int, int>;
+    struct CoordHash {
+        size_t operator()(const CoordKey& k) const {
+            return hash<int>()(k.first) ^ (hash<int>()(k.second) << 1);
+        }
+    };
+    unordered_map<CoordKey, double, CoordHash> heightMap;
+    heightMap.reserve(container.width * container.depth); // Pre-allocate space
+
+    // Populate height map
+    for (const auto* p : containerPlacements) {
+        auto itemIt = itemMap.find(p->itemId);
+        if (itemIt == itemMap.end()) continue;
+
+        for (int x = p->startPos.width; x < p->endPos.width; ++x) {
+            for (int y = p->startPos.depth; y < p->endPos.depth; ++y) {
+                heightMap[{x, y}] = max(heightMap[{x, y}], p->endPos.height);
+            }
+        }
+    }
+
+    // Try positions with best-fit approach - optimize step size for larger items
+    int xStep = max(1, static_cast<int>(item.width / 10));
+    int yStep = max(1, static_cast<int>(item.depth / 10));
+
+    for (int y = 0; y <= container.depth - item.depth; y += yStep) {
+        for (int x = 0; x <= container.width - item.width; x += xStep) {
+            // Find maximum height at this (x,y) position
+            double maxHeight = 0;
+            for (int dx = 0; dx < item.width; ++dx) {
+                for (int dy = 0; dy < item.depth; ++dy) {
+                    maxHeight = max(maxHeight, heightMap[{x + dx, y + dy}]);
                 }
             }
-        }
-    }
-    return false; // No suitable placement found
-}
-
-
-vector<Placement> rearrangeItems(vector<Item>& items, vector<Container>& containers, vector<Placement>& existingPlacements) {
-    vector<Placement> newPlacements;
-
-    // 1. Sort items by priority (highest priority first)
-    sort(items.begin(), items.end(), [](const Item& a, const Item& b) {
-        return a.priority > b.priority;
-    });
-
-    // 2. Create a map for fast item lookup
-    map<string, Item> itemMap;
-    for (auto& item : items) {
-        itemMap[item.itemId] = item;
-    }
-
-     // 3. Create a map for fast container lookup
-    map<string, Container> containerMap;
-    for (auto& container : containers) {
-        containerMap[container.containerId] = container;
-    }
-
-    // 4. Clear existing placements (we're starting from scratch)
-    existingPlacements.clear();
-
-    // 5.  Attempt to place each item
-    for (auto& item : items) {
-        bool placed = false;
-        for (auto& container : containers) {
-            Position startPos, endPos;
-            if (packItem(container, item, existingPlacements, itemMap, startPos, endPos)) {
-                Placement newPlacement;
-                // newPlacement._id = "rearranged_id_" + item.itemId + "_" + container.containerId; // Unique ID
-                newPlacement.containerId = container.containerId;
-                newPlacement.itemId = item.itemId;
-                newPlacement.startPos = startPos;
-                newPlacement.endPos = endPos;
-                existingPlacements.push_back(newPlacement); // Add to existing placements
-                newPlacements.push_back(newPlacement); // Also add to the new placements for return
-                placed = true;
-                break; // Item placed, move to the next item
-            }
-        }
-        if (!placed) {
-            cerr << "Warning: Item " << item.itemId << " could not be placed during rearrangement." << endl;
-        }
-    }
-
-    return newPlacements;
-}
-
-// Function to handle the /api/place route logic
-bool placeItem(string itemId, string containerId, vector<Item>& items, vector<Container>& containers, vector<Placement>& placements, Position preferredStart, Position preferredEnd) {
-    // 1. Find the item and container (using maps for efficiency)
-
-     // Create maps for efficient lookup
-    map<string, Item> itemMap;
-    for (auto& item : items) {
-        itemMap[item.itemId] = item;
-    }
-
-    map<string, Container> containerMap;
-    for (auto& container : containers) {
-        containerMap[container.containerId] = container;
-    }
-
-    Item* item = findItem(itemMap, itemId);
-    Container* container = findContainer(containerMap, containerId);
-
-    if (!item || !container) {
-        cerr << "Error: Item or container not found." << endl;
-        return false;
-    }
-
-    // 2. Check if preferred placement is valid
-    if (isValidPlacement(*container, *item, preferredStart, preferredEnd)) {
-        // Check for collisions at the preferred location
-        bool collision = false;
-        for (const auto& placement : placements) {
-            if (placement.containerId == containerId) {
-                if (isCollision(placement, *item, preferredStart, preferredEnd, itemMap)) {
+            
+            // Try placing item at this position with this height
+            Position tryPos = {static_cast<double>(x), static_cast<double>(y), maxHeight};
+            Position tryEnd = {
+                tryPos.width + item.width, 
+                tryPos.depth + item.depth, 
+                tryPos.height + item.height
+            };
+            
+            if (!isValidPlacement(container, item, tryPos, tryEnd)) continue;
+            
+            // Check for collisions
+            bool collision = false;
+            for (const auto* p : containerPlacements) {
+                if (isCollision(*p, item, tryPos, tryEnd, itemMap)) {
                     collision = true;
                     break;
                 }
             }
+            
+            if (collision) continue;
+            
+            // Calculate waste (empty space under the item)
+            double waste = 0;
+            for (int dx = 0; dx < item.width; ++dx) {
+                for (int dy = 0; dy < item.depth; ++dy) {
+                    waste += (maxHeight - heightMap[{x + dx, y + dy}]);
+                }
+            }
+            
+            // If this is the best position so far, save it
+            if (waste < bestWaste) {
+                bestWaste = waste;
+                bestPos = tryPos;
+                
+                // If we found a perfect fit (no waste), use it immediately
+                if (waste < 0.001) break;
+            }
         }
-
-        if (!collision) {
-            // Preferred placement is valid and no collision, place the item here
-            Placement newPlacement;
-            // newPlacement._id = "unique_id_" + to_string(placements.size() + 1); // Replace with a proper ID generation
-            newPlacement.containerId = containerId;
-            newPlacement.itemId = itemId;
-            newPlacement.startPos = preferredStart;
-            newPlacement.endPos = preferredEnd;
-
-            placements.push_back(newPlacement);
-            cout << "Item " << itemId << " placed in container " << containerId << " at preferred location successfully." << endl;
-            return true;
-        } else {
-            cout << "Warning: Preferred placement for item " << itemId << " in container " << containerId << " has collision." << endl;
-        }
+        if (bestWaste < 0.001) break; // Found perfect fit, exit early
     }
 
-    // 3. If preferred placement is invalid or has collision, find an alternate placement
-    Position startPos, endPos;
-    if (packItem(*container, *item, placements, itemMap, startPos, endPos)) {
-        // 4. Create a new placement
-        Placement newPlacement;
-        // newPlacement._id = "unique_id_" + to_string(placements.size() + 1); // Replace with a proper ID generation
-        newPlacement.containerId = containerId;
-        newPlacement.itemId = itemId;
-        newPlacement.startPos = startPos;
-        newPlacement.endPos = endPos;
-
-        placements.push_back(newPlacement);
-        cout << "Item " << itemId << " placed in container " << containerId << " successfully." << endl;
+    // If we found a valid position, return it
+    if (bestPos.width >= 0) {
+        startPos = bestPos;
+        endPos = {
+            startPos.width + item.width, 
+            startPos.depth + item.depth, 
+            startPos.height + item.height
+        };
         return true;
-    } else {
-        cout << "Error: No suitable placement found for item " << itemId << " in container " << containerId << endl;
-        return false;
     }
+
+    return false; // No suitable placement found
 }
 
+vector<Placement> rearrangeItems(vector<Item>& items, vector<Container>& containers, 
+                                vector<Placement>& existingPlacements) {
+    vector<Placement> newPlacements;
+    newPlacements.reserve(items.size()); // Pre-allocate memory
+    
+    // Create maps for fast lookups
+    map<string, Item> itemMap;
+    for (auto& item : items) {
+        itemMap[item.itemId] = item;
+    }
+    
+    map<string, Container> containerMap;
+    for (auto& container : containers) {
+        containerMap[container.containerId] = container;
+    }
+    
+    // Create a copy of original items for sorting
+    vector<Item> sortedItems = items;
+    
+    // Sort by multiple criteria:
+    // 1. Priority (highest first)
+    // 2. Volume (largest first)
+    // 3. Expiry date (soonest first)
+    sort(sortedItems.begin(), sortedItems.end(), [](const Item& a, const Item& b) {
+        if (a.priority != b.priority)
+            return a.priority > b.priority;
+        
+        // Use pre-computed volume
+        if (abs(a.volume - b.volume) > 0.01)
+            return a.volume > b.volume;
+            
+        return a.expiryDate < b.expiryDate;
+    });
+    
+    // Keep track of placed items to avoid duplicates
+    unordered_set<string> placedItems;
+    placedItems.reserve(items.size()); // Pre-allocate
+    
+    // Map to track container utilization
+    unordered_map<string, double> containerUtilization;
+    containerUtilization.reserve(containers.size()); // Pre-allocate
+    for (auto& container : containers) {
+        containerUtilization[container.containerId] = 0.0;
+    }
+    
+    // Clear existing placements but remember the original placement configuration
+    vector<Placement> originalPlacements = existingPlacements;
+    cout << "Original placements count: " << originalPlacements.size() << endl;
+    
+    // Clear existing placements before rearrangement
+    existingPlacements.clear();
+    
+    // Process each item
+    for (auto& item : sortedItems) {
+        // Skip if already placed
+        if (placedItems.find(item.itemId) != placedItems.end()) {
+            cout << "Item " << item.itemId << " already placed, skipping..." << endl;
+            continue;
+        }
+        
+        bool placed = false;
+        
+        cout << "Processing item: " << item.itemId << " (Priority: " << item.priority << ", Volume: " << item.volume << ")" << endl;
+        
+        // First try placing in preferred zone containers
+        vector<pair<string, double>> preferredContainers;
+        preferredContainers.reserve(containers.size()); // Pre-allocate space
+        
+        for (auto& container : containers) {
+            if (container.zone == item.preferredZone) {
+                // Calculate available volume percentage
+                double utilization = containerUtilization[container.containerId] / container.totalVolume;
+                preferredContainers.push_back({container.containerId, utilization});
+            }
+        }
+        
+        // Sort preferred containers by utilization (least utilized first)
+        sort(preferredContainers.begin(), preferredContainers.end(),
+             [](const pair<string, double>& a, const pair<string, double>& b) {
+                 return a.second < b.second;
+             });
+        
+        cout << "Found " << preferredContainers.size() << " preferred containers for zone: " << item.preferredZone << endl;
+        
+        // Try preferred containers first
+        for (auto& [containerId, utilPct] : preferredContainers) {
+            Container& container = containerMap[containerId];
+            Position startPos, endPos;
+            
+            cout << "Trying container " << containerId << " (current utilization: " << utilPct * 100 << "%)" << endl;
+            
+            if (packItem(container, item, existingPlacements, itemMap, startPos, endPos)) {
+                Placement newPlacement{
+                    containerId,
+                    item.itemId,
+                    startPos,
+                    endPos
+                };
+                
+                existingPlacements.push_back(newPlacement);
+                newPlacements.push_back(newPlacement);
+                
+                // Update container utilization
+                containerUtilization[containerId] += item.volume;
+                
+                placedItems.insert(item.itemId);
+                placed = true;
+                
+                cout << "Item " << item.itemId << " placed in preferred container " << containerId 
+                     << " at position (" << startPos.width << ", " << startPos.depth << ", " << startPos.height << ")" << endl;
+                break;
+            }
+        }
+        
+        // If not placed in preferred zone, try any container
+        if (!placed) {
+            cout << "Could not place item " << item.itemId << " in preferred zone. Trying any container..." << endl;
+            
+            // Sort all containers by utilization (least utilized first)
+            vector<pair<string, double>> allContainers;
+            allContainers.reserve(containers.size()); // Pre-allocate space
+            
+            for (auto& container : containers) {
+                double utilization = containerUtilization[container.containerId] / container.totalVolume;
+                allContainers.push_back({container.containerId, utilization});
+            }
+            
+            sort(allContainers.begin(), allContainers.end(),
+                 [](const pair<string, double>& a, const pair<string, double>& b) {
+                     return a.second < b.second;
+                 });
+            
+            // Create a set of preferred container IDs for faster lookup
+            unordered_set<string> preferredContainerIds;
+            for (auto& [containerId, _] : preferredContainers) {
+                preferredContainerIds.insert(containerId);
+            }
+            
+            for (auto& [containerId, utilPct] : allContainers) {
+                // Skip if we already tried this in preferred containers
+                if (preferredContainerIds.find(containerId) != preferredContainerIds.end()) {
+                    continue;
+                }
+                
+                Container& container = containerMap[containerId];
+                Position startPos, endPos;
+                
+                cout << "Trying container " << containerId << " (current utilization: " << utilPct * 100 << "%)" << endl;
+                
+                if (packItem(container, item, existingPlacements, itemMap, startPos, endPos)) {
+                    Placement newPlacement{
+                        containerId,
+                        item.itemId,
+                        startPos,
+                        endPos
+                    };
+                    
+                    existingPlacements.push_back(newPlacement);
+                    newPlacements.push_back(newPlacement);
+                    
+                    // Update container utilization
+                    containerUtilization[containerId] += item.volume;
+                    
+                    placedItems.insert(item.itemId);
+                    placed = true;
+                    
+                    cout << "Item " << item.itemId << " placed in container " << containerId 
+                         << " at position (" << startPos.width << ", " << startPos.depth << ", " << startPos.height << ")" << endl;
+                    break;
+                }
+            }
+        }
+        
+        if (!placed) {
+            cerr << "Warning: Item " << item.itemId << " could not be placed during rearrangement." << endl;
+        }
+    }
+    
+    // Compare new placements with original
+    cout << "\nPlacement comparison:" << endl;
+    cout << "Original placements: " << originalPlacements.size() << endl;
+    cout << "New placements: " << newPlacements.size() << endl;
+    
+    // Check for changes in item positions
+    for (const auto& oldP : originalPlacements) {
+        bool found = false;
+        for (const auto& newP : newPlacements) {
+            if (oldP.itemId == newP.itemId) {
+                found = true;
+                if (oldP.containerId != newP.containerId ||
+                    oldP.startPos.width != newP.startPos.width ||
+                    oldP.startPos.depth != newP.startPos.depth ||
+                    oldP.startPos.height != newP.startPos.height) {
+                    
+                    cout << "Item " << oldP.itemId << " moved from " 
+                         << oldP.containerId << " (" << oldP.startPos.width << ", " << oldP.startPos.depth << ", " << oldP.startPos.height << ")"
+                         << " to " 
+                         << newP.containerId << " (" << newP.startPos.width << ", " << newP.startPos.depth << ", " << newP.startPos.height << ")" << endl;
+                } else {
+                    cout << "Item " << oldP.itemId << " position unchanged" << endl;
+                }
+                break;
+            }
+        }
+        
+        if (!found) {
+            cout << "Item " << oldP.itemId << " was removed from placement" << endl;
+        }
+    }
+    
+    return newPlacements;
+}
 
 #include <iostream>
 #include <sstream>
@@ -301,29 +479,6 @@ using json = nlohmann::json;
 using namespace std;
 
 int main() {
-    // vector<Item> items = {
-    //     {"002", "Oxygen Cylinder", 15, 15, 50, 95, "2025-12-31", 50, "Airlock"},
-    //     {"003", "First Aid Kit", 20, 20, 10, 100, "2025-07-10", 20, "Medical Bay"},
-    //     {"001", "Food Packet", 10, 10, 20, 80, "2025-05-20", 30, "Crew Quarters"}
-    // };
-
-    // vector<Container> containers = {
-    //     {"contA", "Crew Quarters", 100, 85, 200},
-    //     {"contB", "Airlock", 50, 85, 200},
-    //     {"contC", "Medical Bay", 80, 70, 150}
-    // };
-
-    // vector<Placement> placements = {
-    //     {"contA", "001", {0, 0, 0}, {10, 10, 20}, "2025-04-04T13:36:08.631+00:00", "2025-04-04T13:36:08.631+00:00"},
-    //     {"contB", "002", {0, 0, 0}, {15, 15, 50}, "2025-04-04T13:36:07.706+00:00", "2025-04-04T13:36:07.706+00:00"},
-    //     {"contC", "003", {0, 0, 0}, {20, 20, 10}, "2025-04-04T13:36:08.259+00:00", "2025-04-04T13:36:08.259+00:00"}
-    // };
-
-    // // Example usage of the placeItem function with preferred coordinates
-    // Position preferredStart = {5, 5, 5};
-    // Position preferredEnd = {20, 20, 55}; // Example end coordinates based on item size
-    // bool placed = placeItem("002", "contB", items, containers, placements, preferredStart, preferredEnd);
-
     ostringstream inputBuffer;
     string line;
 
@@ -345,47 +500,47 @@ int main() {
     vector<Placement> Placements;
 
     for (int i = 0; i < itemsData.size(); i++) {
-        Item x = Item(
-            itemsData[i]["itemId"],
-            itemsData[i]["name"],
-            itemsData[i]["width"],
-            itemsData[i]["depth"],
-            itemsData[i]["height"],
-            itemsData[i]["priority"],
-            itemsData[i]["expiryData"],
-            itemsData[i]["usageLimit"],
-            itemsData[i]["preferredZone"]
-        );
+        string itemId = itemsData[i].contains("itemId") && !itemsData[i]["itemId"].is_null() ? itemsData[i]["itemId"].get<string>() : "";
+        string name = itemsData[i].contains("name") && !itemsData[i]["name"].is_null() ? itemsData[i]["name"].get<string>() : "";
+        double width = itemsData[i].contains("width") && !itemsData[i]["width"].is_null() ? itemsData[i]["width"].get<double>() : 0.0;
+        double depth = itemsData[i].contains("depth") && !itemsData[i]["depth"].is_null() ? itemsData[i]["depth"].get<double>() : 0.0;
+        double height = itemsData[i].contains("height") && !itemsData[i]["height"].is_null() ? itemsData[i]["height"].get<double>() : 0.0;
+        int priority = itemsData[i].contains("priority") && !itemsData[i]["priority"].is_null() ? itemsData[i]["priority"].get<int>() : 0;
+        string expiryDate = itemsData[i].contains("expiryData") && !itemsData[i]["expiryData"].is_null() ? itemsData[i]["expiryData"].get<string>() : "";
+        int usageLimit = itemsData[i].contains("usageLimit") && !itemsData[i]["usageLimit"].is_null() ? itemsData[i]["usageLimit"].get<int>() : 0;
+        string preferredZone = itemsData[i].contains("preferredZone") && !itemsData[i]["preferredZone"].is_null() ? itemsData[i]["preferredZone"].get<string>() : "";
+
+        Item x = Item(itemId, name, width, depth, height, priority, expiryDate, usageLimit, preferredZone);
         Items.push_back(x);
     }
 
     for (int i = 0; i < containerData.size(); i++) {
-        Container x = Container(
-            containerData[i]["containerId"],
-            containerData[i]["name"],
-            containerData[i]["width"],
-            containerData[i]["depth"],
-            containerData[i]["height"]
-        );
+        string containerId = containerData[i].contains("containerId") && !containerData[i]["containerId"].is_null() ? containerData[i]["containerId"].get<string>() : "";
+        string zone = containerData[i].contains("name") && !containerData[i]["name"].is_null() ? containerData[i]["name"].get<string>() : "";
+        double width = containerData[i].contains("width") && !containerData[i]["width"].is_null() ? containerData[i]["width"].get<double>() : 0.0;
+        double depth = containerData[i].contains("depth") && !containerData[i]["depth"].is_null() ? containerData[i]["depth"].get<double>() : 0.0;
+        double height = containerData[i].contains("height") && !containerData[i]["height"].is_null() ? containerData[i]["height"].get<double>() : 0.0;
+
+        Container x = Container(containerId, zone, width, depth, height);
         Containers.push_back(x);
     }
 
     for (int i = 0; i < placementData.size(); i++) {
         Position startCoordinates = {
-            placementData[i]["startCoordinates"]["width"],
-            placementData[i]["startCoordinates"]["depth"],
-            placementData[i]["startCoordinates"]["height"]
+            placementData[i]["startCoordinates"].contains("width") && !placementData[i]["startCoordinates"]["width"].is_null() ? placementData[i]["startCoordinates"]["width"].get<double>() : 0.0,
+            placementData[i]["startCoordinates"].contains("depth") && !placementData[i]["startCoordinates"]["depth"].is_null() ? placementData[i]["startCoordinates"]["depth"].get<double>() : 0.0,
+            placementData[i]["startCoordinates"].contains("height") && !placementData[i]["startCoordinates"]["height"].is_null() ? placementData[i]["startCoordinates"]["height"].get<double>() : 0.0
         };
 
         Position endCoordinates = {
-            placementData[i]["endCoordinates"]["width"],
-            placementData[i]["endCoordinates"]["depth"],
-            placementData[i]["endCoordinates"]["height"]
+            placementData[i]["endCoordinates"].contains("width") && !placementData[i]["endCoordinates"]["width"].is_null() ? placementData[i]["endCoordinates"]["width"].get<double>() : 0.0,
+            placementData[i]["endCoordinates"].contains("depth") && !placementData[i]["endCoordinates"]["depth"].is_null() ? placementData[i]["endCoordinates"]["depth"].get<double>() : 0.0,
+            placementData[i]["endCoordinates"].contains("height") && !placementData[i]["endCoordinates"]["height"].is_null() ? placementData[i]["endCoordinates"]["height"].get<double>() : 0.0
         };
 
         Placement x = Placement(
-            placementData[i]["containerId"],
-            placementData[i]["itemId"],
+            placementData[i].contains("containerId") && !placementData[i]["containerId"].is_null() ? placementData[i]["containerId"].get<string>() : "",
+            placementData[i].contains("itemId") && !placementData[i]["itemId"].is_null() ? placementData[i]["itemId"].get<string>() : "",
             startCoordinates,
             endCoordinates
         );
@@ -394,18 +549,40 @@ int main() {
 
     // Example usage of the placeItem function with preferred coordinates
     Position preferredStart = {
-        priorityItem["startCoordinates"]["x"],
-        priorityItem["startCoordinates"]["y"],
-        priorityItem["startCoordinates"]["z"]
+        priorityItem["startCoordinates"].contains("x") && !priorityItem["startCoordinates"]["x"].is_null() ? priorityItem["startCoordinates"]["x"].get<double>() : 0.0,
+        priorityItem["startCoordinates"].contains("y") && !priorityItem["startCoordinates"]["y"].is_null() ? priorityItem["startCoordinates"]["y"].get<double>() : 0.0,
+        priorityItem["startCoordinates"].contains("z") && !priorityItem["startCoordinates"]["z"].is_null() ? priorityItem["startCoordinates"]["z"].get<double>() : 0.0
     };
 
     Position preferredEnd = {
-        priorityItem["endCoordinates"]["x"],
-        priorityItem["endCoordinates"]["y"],
-        priorityItem["endCoordinates"]["z"]
+        priorityItem["endCoordinates"].contains("x") && !priorityItem["endCoordinates"]["x"].is_null() ? priorityItem["endCoordinates"]["x"].get<double>() : 0.0,
+        priorityItem["endCoordinates"].contains("y") && !priorityItem["endCoordinates"]["y"].is_null() ? priorityItem["endCoordinates"]["y"].get<double>() : 0.0,
+        priorityItem["endCoordinates"].contains("z") && !priorityItem["endCoordinates"]["z"].is_null() ? priorityItem["endCoordinates"]["z"].get<double>() : 0.0
     };
 
-    bool placed = placeItem(priorityItem["itemId"], priorityItem["containerId"], Items, Containers, Placements, preferredStart, preferredEnd);
+    map<string, Item> itemMap;
+    for (auto& item : Items) {
+        itemMap[item.itemId] = item;
+    }
+    
+    map<string, Container> containerMap;
+    for (auto& container : Containers) {
+        containerMap[container.containerId] = container;
+    }
+
+    string itemId = priorityItem["itemId"].get<string>();
+    string containerId = priorityItem["containerId"].get<string>();
+
+    bool placed = false;
+    if (itemMap.find(itemId) != itemMap.end() && containerMap.find(containerId) != containerMap.end()) {
+        Position endPos;
+        placed = packItem(containerMap[containerId], itemMap[itemId], Placements, itemMap, preferredStart, endPos);
+        
+        if (placed) {
+            Placement newPlacement(containerId, itemId, preferredStart, endPos);
+            Placements.push_back(newPlacement);
+        }
+    }
 
     if (placed) {
         cout << "Item placed successfully.\n";
@@ -415,12 +592,34 @@ int main() {
 
     cout << "\nRearranging Items...\n";
     vector<Placement> newPlacements = rearrangeItems(Items, Containers, Placements);
-
-    cout << "New Placements after rearrangement:\n";
+    
+    cout << "\nFinal Placements after rearrangement:\n";
     for (const auto& p : newPlacements) {
-        cout << "Item: " << p.itemId << ", Container: " << p.containerId
+        cout << "Item: " << p.itemId << ", Container: " << p.containerId 
              << ", Start: (" << p.startPos.width << ", " << p.startPos.depth << ", " << p.startPos.height << ")"
              << ", End: (" << p.endPos.width << ", " << p.endPos.depth << ", " << p.endPos.height << ")\n";
     }
+    
+    // Display position changes summary
+    cout << "\nPlacement Changes Summary:" << endl;
+    json result = json::array();
+    for (const auto& p : newPlacements) {
+        json placement;
+        placement["itemId"] = p.itemId;
+        placement["containerId"] = p.containerId;
+        placement["startCoordinates"] = {
+            {"width", p.startPos.width},
+            {"depth", p.startPos.depth},
+            {"height", p.startPos.height}
+        };
+        placement["endCoordinates"] = {
+            {"width", p.endPos.width},
+            {"depth", p.endPos.depth},
+            {"height", p.endPos.height}
+        };
+        result.push_back(placement);
+    }
+    
+    cout << result.dump(4) << endl;
     return 0;
 }

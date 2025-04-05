@@ -578,13 +578,19 @@ async def place(data:PlaceRequest):
         "priorityItem" : item_to_retrieve
     }, indent=4)
 
-
+    print(input_json)
     command = "g++ -std=c++20 final_cpp_codes/placingItem.cpp -o final_cpp_codes/placingItem && ./final_cpp_codes/placingItem"
     process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
     stdout, stderr = process.communicate(input=input_json)
 
     print("C++ Program Output:", stdout)
     print("C++ Program Errors:", stderr)
+
+    return {
+        "status": "success",
+        "message": f"Item {data.itemId} placed by user {data.userId} at {data.timestamp} in container {data.containerId} from {data.position.startCoordinates} to {data.position.endCoordinates}",
+        "item": item_to_retrieve
+    }
 
 @app.get("/api/waste/identify")
 async def waste_identify():
@@ -654,15 +660,20 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
         raise HTTPException(status_code=404, detail="Zone not found")
 
     containers = await prisma.container.find_many(where={"zone": zone.name})
+    if not containers:
+        raise HTTPException(status_code=404, detail="Containers not found")
 
     placements = await prisma.placement.find_many(where={"containerId": container_id})
+    if not placements:
+        raise HTTPException(status_code=404, detail="Placements not found")
     item_ids = [placement.itemId for placement in placements]
 
     items = []
     for item_id in item_ids:
         item = await prisma.item.find_first(where={"itemId": item_id})
+        print(f"Item: {item}")
         if item:
-            items.append({
+            i_data = {
                 "itemId": item.itemId,
                 "name": item.name,
                 "width": item.width,
@@ -673,12 +684,15 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
                 "expiryDate": item.expiryDate,
                 "usageLimit": item.usageLimit,
                 "preferredZone": item.preferredZone
-            })
+            }
+            items.append(i_data)
+
 
     items_to_remove = []
     total_removed_weight = 0.0
 
     items.sort(key=lambda x: x["priority"], reverse=True)
+    print(f"Items: {items}")
 
     for item in items:
         if total_removed_weight + item["mass"] <= max_weight:
@@ -722,13 +736,34 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
 
     try:
         output_data = json.loads(stdout)
+        print(type(output_data))
+        print(f"Ouput data: {output_data}")
     except json.JSONDecodeError as e:
         print(f"JSON decode error: {e}")
         print(f"Problematic JSON: {stdout}")
         raise HTTPException(status_code=500, detail=f"Invalid JSON response from algorithm: {str(e)}")
 
     retrieval_steps = []
+    items_to_remove_with_coordinates = []
     for item in items_to_remove:
+        placement = await prisma.placement.find_first(where={"itemId": item["itemId"]})
+        if placement:
+            x_data = {
+                "itemId": item["itemId"],
+                "name" : item["name"],
+                "startPos": {
+                    "x": placement.startPos["x"],
+                    "y": placement.startPos["y"],
+                    "z": placement.startPos["z"]
+                },
+                "width" : item["width"],
+                "depth" : item["depth"],
+                "height" : item["height"],
+            }
+
+            items_to_remove_with_coordinates.append(x_data)
+    print(f"Items to remove: {items_to_remove_with_coordinates}")
+    for item in items_to_remove_with_coordinates:
         input_json = json.dumps({
             "container": {
                 "containerId": container.containerId,
@@ -741,6 +776,8 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
             "itemId": item["itemId"]
         }, indent=4)
 
+        print("Input JSON:", input_json)
+
         command = "g++ -std=c++20 final_cpp_codes/retrievalPathPlanning.cpp -o final_cpp_codes/retrievalPathPlanning && ./final_cpp_codes/retrievalPathPlanning"
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
         stdout, stderr = process.communicate(input=input_json)
@@ -751,25 +788,32 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
         if not stdout:
             raise HTTPException(status_code=500, detail="C++ retrieval program did not return any output. Check for errors.")
 
+        stdout = stdout.strip()
+
+        print("-" * 50, stdout)
+        stdout = stdout.replace('\\n', '\n').replace('\\\"', '\"')
+        stdout = re.sub(r'\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})', r'', stdout)
+
         try:
-            retrieval_output = json.loads(stdout)
-            retrieval_steps.extend(retrieval_output.get("steps", []))
+            output_data = json.loads(stdout)
         except json.JSONDecodeError as e:
             print(f"JSON decode error: {e}")
             print(f"Problematic JSON: {stdout}")
-            raise HTTPException(status_code=500, detail=f"Invalid JSON response from retrieval algorithm: {str(e)}")
-
+            raise HTTPException(status_code=500, detail=f"Invalid JSON response from algorithm: {str(e)}")
+        
+        retrieval_steps.append(output_data)
+        
     return_items = [
         {
             "itemId": item["itemId"],
             "name": item["name"],
             "reason": "Undocking"
         }
-        for item in items_to_remove
+        for item in items_to_remove_with_coordinates
     ]
 
-    total_volume = sum(item["width"] * item["depth"] * item["height"] for item in items_to_remove)
-    total_weight = sum(item["mass"] for item in items_to_remove if item["mass"])
+    total_volume = sum(item["width"] * item["depth"] * item["height"] for item in items_to_remove_with_coordinates)
+    total_weight = sum(item["mass"] for item in items_to_remove_with_coordinates if item["mass"])
 
     return_manifest = {
         "undockingContainerId": container_id,
@@ -904,7 +948,12 @@ async def import_items():
                 "usageLimit": usage_limit,
                 "preferredZone": preferred_zone
             }
-            
+
+            existing_item = await prisma.item.find_first(where={"itemId": item_id})
+            if existing_item:
+                await prisma.item.update(where={"itemId": item_id}, data=item_data) # type: ignore
+                print("Updated Item")
+                continue
             try:
                 created_item = await prisma.item.create(data=item_data) # type: ignore
                 print("Created Item")
