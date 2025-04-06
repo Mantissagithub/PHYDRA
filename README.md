@@ -15,7 +15,7 @@ Welcome aboard *PHYDRA* — an end-to-end, multi-language *Cargo Stowage Managem
 
 ## 📁 Project Structure
 
-bash
+```bash
 PHYDRA/
 ├── .gitignore                 # Keeps your commits clean and tidy
 ├── Dockerfile                 # Backend Docker image blueprint
@@ -28,6 +28,7 @@ PHYDRA/
 ├── frontend/                  # 🌐 Modern UI code
 ├── prisma/
 │   └── schema.prisma          # Prisma schema for database structure
+```
 
 
 ---
@@ -86,7 +87,6 @@ MONGODB_URI=<your_mongob_uri>
 ### 2️⃣ Generate Prisma Client
 
 ```bash
-cd prisma
 prisma generate
 ```
 
