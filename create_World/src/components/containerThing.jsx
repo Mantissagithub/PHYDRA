@@ -3,12 +3,16 @@ import axios from "axios"
 import { motion, AnimatePresence } from "framer-motion"
 import gsap from "gsap"
 import { Rocket } from "lucide-react"
+import ItemDashboard from "./itemThing"
 
-const ContainerDashboard = () => {
+const ContainerDashboard = ({ zoneName, zoneImgUrl }) => {
   const [containers, setContainers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [zoneName, setZoneName] = useState("Medical_Bay")
+  const [selectedContainer, setSelectedContainer] = useState(null) // State for selected container
+
+  const formattedZoneName = zoneName.replace(" ", "_")
+  console.log("zoneName", formattedZoneName)
 
   const fetchContainers = async () => {
     setLoading(true)
@@ -16,7 +20,7 @@ const ContainerDashboard = () => {
     try {
       const response = await axios.get("http://localhost:5000/api/get-containers", {
         params: {
-          zoneName: zoneName,
+          zoneName: formattedZoneName,
         },
         headers: {
           "Content-Type": "application/json",
@@ -24,6 +28,7 @@ const ContainerDashboard = () => {
         },
       })
       if (response.data.Response === "Success") {
+        console.log(response.data.Containers)
         setContainers(response.data.Containers)
       } else {
         setError("Failed to fetch containers")
@@ -82,18 +87,12 @@ const ContainerDashboard = () => {
     }
   }, [zoneName])
 
-  const getRandomItem = (arr) => arr[Math.floor(Math.random() * arr.length)]
-
-  const containerDescriptions = [
-    "Emergency medical supplies",
-    "Essential life support components",
-    "Engine diagnostic tools",
-    "Advanced research equipment",
-  ]
-  const containerIcons = ["thermometer", "heart", "wrench", "flask"]
+  const closeModal = () => {
+    setSelectedContainer(null)
+  }
 
   return (
-    <div className="min-h-screen bg-[#15112b] text-white py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="bg-[#15112b] text-white py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       <div className="max-w-7xl mx-auto relative z-10">
         <motion.div
           className="flex flex-col items-center justify-center mb-12"
@@ -115,7 +114,7 @@ const ContainerDashboard = () => {
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Zone Info */}
           <motion.div
-            className="w-full lg:w-1/4 bg-[#1e1a3c] rounded-2xl p-6 shadow-xl border border-[#f48599]/20"
+            className="w-full lg:w-1/3 bg-[#1e1a3c] rounded-2xl p-6 shadow-xl border border-[#f48599]/20"
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
@@ -123,18 +122,15 @@ const ContainerDashboard = () => {
             <h2 className="text-2xl font-semibold text-[#f8b4c0] mb-4">Zone: {zoneName}</h2>
             <img
               ref={zoneImageRef}
-              src="https://pplx-res.cloudinary.com/image/upload/v1743912063/user_uploads/qJJVHTfoUgGubMe/image.jpg"
+              src={zoneImgUrl}
               alt={zoneName}
               className="w-full h-48 object-cover rounded-xl mb-4"
             />
-            <p className="text-[#e6e6e6]/70">
-              This dashboard provides a view of containers in a given zone, it will not display all the information and properties of a container.
-            </p>
           </motion.div>
 
           {/* Container List */}
           <motion.div
-            className="w-full lg:w-3/4 bg-[#1e1a3c] rounded-2xl p-6 shadow-xl border border-[#f48599]/20"
+            className="w-full lg:w-2/3 bg-[#1e1a3c] rounded-2xl p-6 shadow-xl border border-[#f48599]/20"
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
@@ -161,11 +157,11 @@ const ContainerDashboard = () => {
                       exit="exit"
                     >
                       <h3 className="text-lg font-medium text-[#f8b4c0] mb-2">{container}</h3>
-                      {/* <p className="text-sm text-[#e6e6e6]/80 mb-4">{getRandomItem(containerDescriptions)}</p> */}
                       <motion.button
                         whileHover={{ scale: 1.05, backgroundColor: "#f05672" }}
                         whileTap={{ scale: 0.95 }}
                         className="bg-[#f48599] text-white font-bold py-2 px-4 rounded-xl self-start"
+                        onClick={() => setSelectedContainer(container)} // Open modal with container ID
                       >
                         View Items
                       </motion.button>
@@ -177,6 +173,34 @@ const ContainerDashboard = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* Modal for ItemDashboard */}
+      <AnimatePresence>
+        {selectedContainer && (
+          <motion.div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-[#1e1a3c] rounded-2xl p-6 shadow-2xl w-full max-w-lg"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <button
+                className="absolute top-4 right-4 text-[#f48599] hover:text-[#f05672] text-xl"
+                onClick={closeModal}
+              >
+                &times;
+              </button>
+              <ItemDashboard containerId={selectedContainer} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

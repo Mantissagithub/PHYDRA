@@ -84,11 +84,6 @@ class PlacementRequest(BaseModel):
     items: List[PlacementItem]
     containers: List[PlacementContainer]
 
-class SearchRequest(BaseModel):
-    itemId:str
-    itemName:str
-    userId:str
-
 class RetrieveRequest(BaseModel):
     itemId:str
     userId:str
@@ -302,9 +297,18 @@ async def placement(data: PlacementRequest):
 
     return {"status": "success", "message" : output_refined}
 
+class SearchRequest(BaseModel):
+    itemId: Optional[str] = None
+    itemName: Optional[str] = None
+    userId: Optional[str] = None
 
 @app.get("/api/search")
-async def search(itemId: Optional[str] = None, itemName: Optional[str] = None, userId: Optional[str] = None):
+async def search(data:SearchRequest):
+    itemId = data.itemId
+    itemName = data.itemName
+    userId = data.userId
+    if not itemId and not itemName:
+        raise HTTPException(status_code=400, detail="Either itemId or itemName must be provided")
     if not itemId and not itemName:
         raise HTTPException(status_code=400, detail="Either itemId or itemName must be provided")
 
@@ -424,7 +428,6 @@ async def search(itemId: Optional[str] = None, itemName: Optional[str] = None, u
 
     return {"status": "success", "found": container, "item": item, "message": output_data}
 
-
 @app.post("/api/retrieve")
 async def retrieve(data: RetrieveRequest):
     try:
@@ -434,7 +437,7 @@ async def retrieve(data: RetrieveRequest):
             "timestamp": data.timestamp
         }
 
-        placements = item.placement.find_first(where={"itemId": data.itemId})
+        placements = await prisma.placement.find_first(where={"itemId": data.itemId})
         print(f"placements: {placements}")
 
         containerId = placements.containerId if placements else None
@@ -474,7 +477,7 @@ async def retrieve(data: RetrieveRequest):
             "preferredZone": itemThing.preferredZone
         }
 
-        log_data = {
+        log_data = json.dumps({
             "userId": data.userId,
             "actionType" : "retrieve",
             "itemId": data.itemId,
@@ -483,7 +486,7 @@ async def retrieve(data: RetrieveRequest):
                 "toContainer" : None,
                 "reason" : "Item retrieved"
             }
-        }
+        })
 
         xm = await prisma.log.create(data=log_data) #type: ignore
         print(f"Log created: {xm}")
@@ -1008,49 +1011,48 @@ async def simulate_day(data: SimulateDayRequest):
 async def import_items(file:UploadFile):
 # item_id,name,width_cm,depth_cm,height_cm,mass_kg,priority,expiry_date,usage_limit,preferred_zone
     count = 0
-    with open("csv_data/input_items.csv", "r") as f:
-        contents = await file.read()
-        text_contents = contents.decode("utf-8").splitlines()
-        reader = csv.reader(text_contents)
-        header = next(reader)
-        for row in reader:
-            count+=1
-            item_id = row[0]
-            name = row[1]
-            width = float(row[2]) if row[2] else None
-            depth = float(row[3]) if row[3] else None
-            height = float(row[4]) if row[4] else None
-            mass = float(row[5]) if row[5] else None
-            priority = int(row[6]) if row[6] else None
-            expiry_date = row[7]
-            usage_limit = int(row[8]) if row[8] else None
-            preferred_zone = row[9]
+    contents = await file.read()
+    text_contents = contents.decode("utf-8").splitlines()
+    reader = csv.reader(text_contents)
+    header = next(reader)
+    for row in reader:
+        count+=1
+        item_id = row[0]
+        name = row[1]
+        width = float(row[2]) if row[2] else None
+        depth = float(row[3]) if row[3] else None
+        height = float(row[4]) if row[4] else None
+        mass = float(row[5]) if row[5] else None
+        priority = int(row[6]) if row[6] else None
+        expiry_date = row[7]
+        usage_limit = int(row[8]) if row[8] else None
+        preferred_zone = row[9]
 
 
-            item_data = {
-                "itemId": item_id,
-                "name": name,
-                "width": width,
-                "depth": depth,
-                "height": height,
-                "mass": mass,
-                "priority": priority,
-                "expiryDate": expiry_date,
-                "usageLimit": usage_limit,
-                "preferredZone": preferred_zone
-            }
+        item_data = {
+            "itemId": item_id,
+            "name": name,
+            "width": width,
+            "depth": depth,
+            "height": height,
+            "mass": mass,
+            "priority": priority,
+            "expiryDate": expiry_date,
+            "usageLimit": usage_limit,
+            "preferredZone": preferred_zone
+        }
 
-            existing_item = await prisma.item.find_first(where={"itemId": item_id})
-            if existing_item:
-                await prisma.item.update(where={"itemId": item_id}, data=item_data) # type: ignore
-                print("Updated Item")
-                continue
-            try:
-                created_item = await prisma.item.create(data=item_data) # type: ignore
-                print("Created Item")
-            except Exception as e:
-                print(f"Error creating item: {e}")
-    return Response(content=f"Success: {count} items imported", media_type="text/plain")
+        existing_item = await prisma.item.find_first(where={"itemId": item_id})
+        if existing_item:
+            await prisma.item.update(where={"itemId": item_id}, data=item_data) # type: ignore
+            print("Updated Item")
+            continue
+        try:
+            created_item = await prisma.item.create(data=item_data) # type: ignore
+            print("Created Item")
+        except Exception as e:
+            print(f"Error creating item: {e}")
+    return Response(json.dumps({"success":True,"itemsImported":count,"errors":[]} ), media_type="application/json")
 
 @app.post("/api/import/containers")
 async def import_containers(file: UploadFile):
@@ -1099,7 +1101,7 @@ async def import_containers(file: UploadFile):
         except Exception as e:
             print(f"Error creating zone: {e}")
     
-    return Response(json.dumps({"content": f"Success: {count} containers imported"}), media_type="application/json")
+    return Response(json.dumps({"success":True,"containersImported":count,"errors":[]} ), media_type="application/json")
 
 
 @app.get("/api/export/arrangement")
@@ -1128,7 +1130,6 @@ class LogWhereInput(BaseModel):
     userId: Optional[str] = None
     actionType: Optional[str] = None
 
-@app.get("/api/logs")
 class LogsRequest(BaseModel):
     startDate: str
     endDate: str
@@ -1136,6 +1137,7 @@ class LogsRequest(BaseModel):
     userId: Optional[str] = None
     actionType: Optional[str] = None
 
+@app.get("/api/logs")
 def logs(request: LogsRequest):
     start_date = datetime.fromisoformat(request.startDate)
     end_date = datetime.fromisoformat(request.endDate)
@@ -1169,22 +1171,28 @@ async def get_zones():
     return Response(json.dumps({"Response":"SUCCESS","zones":list(zone_names)}))
 
 @app.get("/api/get-items")
-async def get_items(data:GetItems):
-    container_id = data.containerId
-    
-    print(container_id)
-    placements = await prisma.placement.find_many(where={"containerId":container_id})
-    print(placements)
+async def get_items(containerId: str = Query(..., title="Container ID")):
+    placements = await prisma.placement.find_many(where={"containerId": containerId})
     items_ids = []
     for placement in placements:
-        item_data = await prisma.item.find_first(where={"itemId":placement.itemId})
+        print(placement)
+        item_data = await prisma.item.find_first(where={"itemId": placement.itemId})
         if item_data:
             items_ids.append({
-                "temId":placement.itemId,
-                "itemName":item_data.name
+                "itemId": placement.itemId,
+                "itemName": item_data.name
             })
     print(items_ids)
-    return Response(json.dumps({"Response":"Success","items":items_ids}))
+    return Response(json.dumps({"Response": "Success", "items": items_ids}))
+
+@app.get("/api/getItemData")
+async def get_item_data(itemId: str = Query(..., title="Item ID")):
+    item_data = await prisma.item.find_first(where={"itemId": itemId})
+    if item_data:
+        return {"Response": "Success", "Item": item_data}
+    else:
+        return {"Response": "Item not found"}
+    
 
 @app.get("/api/get-containers")
 async def get_containers(zoneName: str = Query(..., title="Zone Name")):

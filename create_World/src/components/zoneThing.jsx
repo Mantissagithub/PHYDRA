@@ -9,7 +9,9 @@ import {
   Radar,
   AlertCircle,
   Wifi,
+  X
 } from "lucide-react";
+import ContainerDashboard from "./containerThing";
 
 export default function SpaceZonesDashboard({ setZoneData }) {
   const [zones, setZones] = useState([]);
@@ -357,9 +359,25 @@ export default function SpaceZonesDashboard({ setZoneData }) {
 }
 
 function ZoneCard({ zone, icon, index }) {
-  const { name, imageUrl, moduleId, temperature, pressure, oxygenLevel, status } =
-    zone;
+  const { name, imageUrl, moduleId, temperature, pressure, oxygenLevel, status } = zone;
   const statusColor = status === "Nominal" ? "text-green-400" : "text-yellow-400";
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const starsRef = useRef(null);
+
+  // GSAP Star Animation
+  useEffect(() => {
+    if (isModalOpen && starsRef.current) {
+      const stars = starsRef.current.children;
+      gsap.to(stars, {
+        opacity: 0.8,
+        stagger: 0.05,
+        repeat: -1,
+        yoyo: true,
+        duration: 2,
+        ease: "sine.inOut",
+      });
+    }
+  }, [isModalOpen]);
 
   const cardVariants = {
     initial: { opacity: 0, y: 50, scale: 0.9 },
@@ -378,93 +396,149 @@ function ZoneCard({ zone, icon, index }) {
     hover: { scale: 1.05, transition: { duration: 0.2 } },
   };
 
-  const handleDetailsClick = () => {
-    console.log("Details clicked for zone:", name);
-    setZoneData([{ zoneName: name, zoneImgUrl: imageUrl }]);
-  };
+  const ModalContent = () => (
+    <AnimatePresence>
+      {isModalOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            className="bg-gradient-to-br from-[#15112b] to-[#2a2356] rounded-xl max-w-4xl w-full p-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-[#15112b]/90 rounded-xl p-6 backdrop-blur-lg relative overflow-hidden h-[px]">
+              {/* Animated Stars Background */}
+              <div ref={starsRef} className="absolute inset-0 z-0">
+                {Array.from({ length: 50 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute rounded-full bg-white opacity-0"
+                    style={{
+                      width: `${Math.random() * 2 + 1}px`,
+                      height: `${Math.random() * 2 + 1}px`,
+                      top: `${Math.random() * 100}%`,
+                      left: `${Math.random() * 100}%`,
+                    }}
+                  />
+                ))}
+              </div>
+  
+              <div className="relative z-10 h-full flex flex-col">
+                <div className="flex justify-between items-start mb-6">
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-[#f48599] to-[#f8b4c0] bg-clip-text text-transparent">
+                    {name}
+                  </h2>
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="text-[#f48599] hover:text-[#f8b4c0] transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+  
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto">
+  
+                  <ContainerDashboard 
+                    zoneName={name}
+                    zoneImgUrl={imageUrl}
+                  />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
   return (
-    <motion.div
-      className="rounded-xl overflow-hidden shadow-lg"
-      variants={cardVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      layoutId={name}
-      whileHover="hover"
-    >
-      <div className="bg-gradient-to-br from-[#f48599] to-[#f05672] p-0.5 rounded-xl">
-        <motion.div
-          className="bg-[#15112b]/90 backdrop-blur-sm rounded-xl h-full flex flex-col"
-          whileHover={{
-            backgroundColor: "rgba(21, 17, 43, 0.7)",
-            transition: { duration: 0.3 },
-          }}
-        >
-          {/* Image */}
-          <img
-            src={imageUrl}
-            alt={name}
-            className="w-full h-48 object-cover rounded-t-xl"
-          />
+    <>
+      <motion.div
+        className="rounded-xl overflow-hidden shadow-lg"
+        variants={cardVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        layoutId={name}
+        whileHover="hover"
+      >
+        <div className="bg-gradient-to-br from-[#f48599] to-[#f05672] p-0.5 rounded-xl">
+          <motion.div
+            className="bg-[#15112b]/90 backdrop-blur-sm rounded-xl h-full flex flex-col"
+            whileHover={{
+              backgroundColor: "rgba(21, 17, 43, 0.7)",
+              transition: { duration: 0.3 },
+            }}
+          >
+            <img
+              src={imageUrl}
+              alt={name}
+              className="w-full h-48 object-cover rounded-t-xl"
+            />
 
-          <div className="p-5 flex-grow">
-            {/* Card header with zone name and icon */}
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold text-[#f8b4c0]">
-                {name.replace(/_/g, " ")}
-              </h3>
-              <div className="text-[#f48599]">{icon}</div>
-            </div>
-
-            {/* Decorative element */}
-            <div className="w-full h-1 bg-gradient-to-r from-[#f05672]/50 to-[#f8b4c0]/50 rounded-full mb-4"></div>
-
-            {/* Zone status indicators */}
-            <div className="flex-1 space-y-3 text-sm">
-              <div className="flex justify-between items-center">
-                <span className="text-[#e6e6e6]/70">Module ID:</span>
-                <span className="font-mono text-[#f8b4c0]">{moduleId}</span>
+            <div className="p-5 flex-grow">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-[#f8b4c0]">
+                  {name.replace(/_/g, " ")}
+                </h3>
+                <div className="text-[#f48599]">{icon}</div>
               </div>
 
-              <div className="flex justify-between items-center">
-                <span className="text-[#e6e6e6]/70">Temperature:</span>
-                <span className="font-mono">{temperature}</span>
-              </div>
+              <div className="w-full h-1 bg-gradient-to-r from-[#f05672]/50 to-[#f8b4c0]/50 rounded-full mb-4"></div>
 
-              <div className="flex justify-between items-center">
-                <span className="text-[#e6e6e6]/70">Pressure:</span>
-                <span className="font-mono">{pressure}</span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-[#e6e6e6]/70">Oxygen Level:</span>
-                <span className="font-mono">{oxygenLevel}</span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-[#e6e6e6]/70">Status:</span>
-                <span className={`font-mono ${statusColor}`}>{status}</span>
+              <div className="flex-1 space-y-3 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-[#e6e6e6]/70">Module ID:</span>
+                  <span className="font-mono text-[#f8b4c0]">{moduleId}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[#e6e6e6]/70">Temperature:</span>
+                  <span className="font-mono">{temperature}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[#e6e6e6]/70">Pressure:</span>
+                  <span className="font-mono">{pressure}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[#e6e6e6]/70">Oxygen Level:</span>
+                  <span className="font-mono">{oxygenLevel}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[#e6e6e6]/70">Status:</span>
+                  <span className={`font-mono ${statusColor}`}>{status}</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Card footer with action button */}
-          <div className="mt-4 pt-3 border-t border-[#f48599]/20 flex justify-between items-center p-5">
-            <div className="flex items-center">
-              <div
-                className={`w-2 h-2 rounded-full ${
-                  status === "Nominal" ? "bg-green-400" : "bg-yellow-400"
-                } mr-2`}
-              ></div>
-              <span className="text-xs">{status} Report</span>
+            <div className="mt-4 pt-3 border-t border-[#f48599]/20 flex justify-between items-center p-5">
+              <div className="flex items-center">
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    status === "Nominal" ? "bg-green-400" : "bg-yellow-400"
+                  } mr-2`}
+                ></div>
+                <span className="text-xs">{status} Report</span>
+              </div>
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="bg-gradient-to-r from-[#f05672] to-[#f8b4c0] text-white text-sm font-semibold py-2 px-4 rounded-full hover:opacity-80 transition-opacity"
+              >
+                Details
+              </button>
             </div>
-            <button className="bg-gradient-to-r from-[#f05672] to-[#f8b4c0] text-white text-sm font-semibold py-2 px-4 rounded-full hover:opacity-80 transition-opacity" onClick={handleDetailsClick}>
-              Details
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    </motion.div>
+          </motion.div>
+        </div>
+      </motion.div>
+      
+      <ModalContent />
+    </>
   );
 }
