@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import gsap from "gsap";
+import axios from "axios";
 import {
   Rocket,
   Satellite,
@@ -9,7 +10,7 @@ import {
   Radar,
   AlertCircle,
   Wifi,
-  X
+  X,
 } from "lucide-react";
 import ContainerDashboard from "./containerThing";
 
@@ -57,7 +58,7 @@ export default function SpaceZonesDashboard({ setZoneData }) {
     {
       name: "Command Center",
       imageUrl:
-        "https://images.unsplash.com/photo-1737502483514-010a36cf6b9b?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c3BhY2UlMjBjb21tYW5kJTIwY2VudGVyfGVufDB8fDB8fHww",
+        "https://images.unsplash.com/photo-1737502483514-010a36cf6b9b?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
       moduleId: "ISS-184",
       temperature: "20.3°C",
       pressure: "182.8 kPa",
@@ -87,7 +88,7 @@ export default function SpaceZonesDashboard({ setZoneData }) {
     {
       name: "Cockpit",
       imageUrl:
-        "https://images.unsplash.com/photo-1704964969482-628c5e29d09a?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8aXNzJTIwY29ja3BpdHxlbnwwfHwwfHx8MA%3D%3D",
+        "https://images.unsplash.com/photo-1704964969482-628c5e29d09a?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
       moduleId: "ISS-187",
       temperature: "22.1°C",
       pressure: "181.0 kPa",
@@ -220,15 +221,62 @@ export default function SpaceZonesDashboard({ setZoneData }) {
     }
   }, []);
 
-  // Initialize zones with static data
+  // Initialize zones with API data
   useEffect(() => {
-    setZones(staticZones);
-    setLoading(false); // No API call, so set loading to false immediately
-    // Extract zone name and image URL and pass it to the parent component
-    const zoneData = staticZones.map((zone) => ({
-      zoneName: zone.name,
-      zoneImgUrl: zone.imageUrl,
-    }));
+    const fetchZones = async () => {
+      try {
+        const response = await axios.get(
+          "http://localhost:5173/api/get-zones",
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+          }
+        );
+
+        const data = response.data;
+
+        if (data.Response === "SUCCESS" && Array.isArray(data.zones)) {
+          let matchedZones = data.zones.map((zoneName, index) => {
+            if (index < 16 && staticZones[index]) {
+              return staticZones[index];
+            }
+            return {
+              name: zoneName,
+              imageUrl: staticZones[15].imageUrl,
+              moduleId: `ISS-${index + 1}`,
+              temperature: "21.0°C",
+              pressure: "182.0 kPa",
+              oxygenLevel: "28.0%",
+              status: "Nominal",
+            };
+          });
+
+          setZones(matchedZones);
+          setZoneData(
+            matchedZones.map((zone) => ({
+              zoneName: zone.name,
+              zoneImgUrl: zone.imageUrl,
+            }))
+          );
+        }
+        setLoading(false);
+      } catch (error) {
+        console.warn("Error fetching zones, using default 16 zones:", error);
+        const default16Zones = staticZones.slice(0, 16);
+        setZones(default16Zones);
+        setZoneData(
+          default16Zones.map((zone) => ({
+            zoneName: zone.name,
+            zoneImgUrl: zone.imageUrl,
+          }))
+        );
+        setLoading(false);
+      }
+    };
+
+    fetchZones();
   }, [setZoneData]);
 
   // Animate cards when they load
@@ -324,7 +372,9 @@ export default function SpaceZonesDashboard({ setZoneData }) {
               <div className="absolute inset-0 rounded-full border-2 border-[#f48599]/20 border-t-[#f48599]  animate-spin"></div>
               <div className="absolute inset-3 rounded-full border-2 border-[#f8b4c0]/20 border-b-[#f8b4c0] animate-spin animation-delay-150"></div>
             </div>
-            <div className="ml-4 text-[#f48599]">Establishing connection...</div>
+            <div className="ml-4 text-[#f48599]">
+              Establishing connection...
+            </div>
           </div>
         ) : error ? (
           <div className="bg-red-500/20 text-red-200 p-6 rounded-lg text-center border border-red-500/30 max-w-md mx-auto">
@@ -338,7 +388,7 @@ export default function SpaceZonesDashboard({ setZoneData }) {
         ) : (
           <motion.div
             ref={cardsRef}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr"
             layout
           >
             <AnimatePresence>
@@ -359,8 +409,17 @@ export default function SpaceZonesDashboard({ setZoneData }) {
 }
 
 function ZoneCard({ zone, icon, index }) {
-  const { name, imageUrl, moduleId, temperature, pressure, oxygenLevel, status } = zone;
-  const statusColor = status === "Nominal" ? "text-green-400" : "text-yellow-400";
+  const {
+    name,
+    imageUrl,
+    moduleId,
+    temperature,
+    pressure,
+    oxygenLevel,
+    status,
+  } = zone;
+  const statusColor =
+    status === "Nominal" ? "text-green-400" : "text-yellow-400";
   const [isModalOpen, setIsModalOpen] = useState(false);
   const starsRef = useRef(null);
 
@@ -429,7 +488,7 @@ function ZoneCard({ zone, icon, index }) {
                   />
                 ))}
               </div>
-  
+
               <div className="relative z-10 h-full flex flex-col">
                 <div className="flex justify-between items-start mb-6">
                   <h2 className="text-2xl font-bold bg-gradient-to-r from-[#f48599] to-[#f8b4c0] bg-clip-text text-transparent">
@@ -442,14 +501,10 @@ function ZoneCard({ zone, icon, index }) {
                     <X className="w-6 h-6" />
                   </button>
                 </div>
-  
+
                 {/* Scrollable Content */}
                 <div className="flex-1 overflow-y-auto">
-  
-                  <ContainerDashboard 
-                    zoneName={name}
-                    zoneImgUrl={imageUrl}
-                  />
+                  <ContainerDashboard zoneName={name} zoneImgUrl={imageUrl} />
                 </div>
               </div>
             </div>
@@ -527,7 +582,7 @@ function ZoneCard({ zone, icon, index }) {
                 ></div>
                 <span className="text-xs">{status} Report</span>
               </div>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(true)}
                 className="bg-gradient-to-r from-[#f05672] to-[#f8b4c0] text-white text-sm font-semibold py-2 px-4 rounded-full hover:opacity-80 transition-opacity"
               >
@@ -537,7 +592,7 @@ function ZoneCard({ zone, icon, index }) {
           </motion.div>
         </div>
       </motion.div>
-      
+
       <ModalContent />
     </>
   );

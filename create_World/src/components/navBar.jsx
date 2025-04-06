@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Mail,
@@ -366,93 +366,142 @@ const SimulateDaysContent = ({
 };
 
 const MsgBoxContent = () => {
-  const messages = [
-    {
-      id: 1,
-      text: "System update completed successfully",
-      time: "10:30 AM",
-      type: "success",
-    },
-    {
-      id: 2,
-      text: "New container added to inventory",
-      time: "11:45 AM",
-      type: "info",
-    },
-    {
-      id: 3,
-      text: "Warning: Low stock on item #A1234",
-      time: "1:15 PM",
-      type: "warning",
-    },
-    {
-      id: 4,
-      text: "Simulation completed for 5 days",
-      time: "3:20 PM",
-      type: "success",
-    },
-    {
-      id: 5,
-      text: "CSV import successful: 120 items added",
-      time: "4:55 PM",
-      type: "success",
-    },
-  ];
+  const [logs, setLogs] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchLogs = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data } = await axios({
+        method: "get",
+        url: "http://localhost:8000/api/get-logs",
+        timeout: 5000, // 5 second timeout
+      });
+
+      if (data?.success) {
+        setLogs(Array.isArray(data.logs) ? data.logs : []);
+      } else {
+        throw new Error("Invalid response from server");
+      }
+    } catch (err) {
+      console.error("Fetch logs error:", err);
+      setError("Could not load logs. Please try again.");
+      setLogs([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const formatDetails = (details) => {
+    if (!details) return null;
+    if (typeof details === "string") return details;
+
+    // Handle object details
+    if (typeof details === "object") {
+      if (details.fromContainer && details.toContainer) {
+        return `Moved from ${details.fromContainer} to ${details.toContainer}${
+          details.reason ? ` - ${details.reason}` : ""
+        }`;
+      }
+      return JSON.stringify(details);
+    }
+
+    return String(details);
+  };
+
+  // Load logs on mount
+  useEffect(() => {
+    fetchLogs();
+    return () => setLogs([]); // Cleanup on unmount
+  }, [fetchLogs]);
+
+  // Component cleanup
+  useEffect(() => {
+    return () => {
+      setIsLoading(false);
+      setError(null);
+    };
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-48">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-500/20 rounded-lg">
+        <p className="text-white text-center">{error}</p>
+        <button
+          onClick={fetchLogs}
+          className="mt-4 w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-        <Mail className="mr-2 h-5 w-5" />
-        Message Box
-      </h3>
-
-      <div className="bg-[#15112b]/70 p-5 rounded-xl">
-        <div className="flex justify-between items-center mb-4">
-          <p className="text-white/80">Recent system messages</p>
-          <span className="text-xs text-white/60">Today</span>
-        </div>
-
-        <div
-          className="space-y-3 max-h-[300px] overflow-y-auto pr-1"
-          style={{ scrollbarWidth: "thin" }}
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold text-white flex items-center">
+          <Mail className="mr-2 h-5 w-5" />
+          Message Box
+        </h3>
+        <button
+          onClick={fetchLogs}
+          className="px-3 py-1 text-sm bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
         >
-          {messages.map((message) => (
-            <motion.div
-              key={message.id}
-              className={`p-3 rounded-lg flex items-start gap-3 ${
-                message.type === "warning"
-                  ? "bg-amber-500/10 border border-amber-500/30"
-                  : message.type === "success"
-                  ? "bg-emerald-500/10 border border-emerald-500/30"
-                  : "bg-white/10 border border-white/10"
-              }`}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: message.id * 0.05 }}
-            >
-              {message.type === "warning" && (
-                <AlertCircle className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
-              )}
-              {message.type === "success" && (
-                <div className="h-5 w-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <div className="h-2 w-2 rounded-full bg-emerald-400"></div>
-                </div>
-              )}
-              {message.type === "info" && (
-                <div className="h-5 w-5 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <div className="h-2 w-2 rounded-full bg-blue-400"></div>
-                </div>
-              )}
+          Refresh
+        </button>
+      </div>
 
-              <div className="flex-1">
-                <div className="flex justify-between">
-                  <span className="font-medium text-white">{message.time}</span>
-                </div>
-                <p className="mt-1 text-white/90">{message.text}</p>
+      <div className="bg-[#15112b]/70 p-5 rounded-xl space-y-4">
+        {logs.length === 0 ? (
+          <p className="text-white/60 text-center py-8">No logs available</p>
+        ) : (
+          logs.map((log, idx) => (
+            <motion.div
+              key={`${log.timestamp}-${idx}`}
+              className="p-3 rounded-lg bg-white/10 border border-white/10"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: idx * 0.1 }}
+            >
+              <div className="flex justify-between text-sm">
+                <span className="text-white/90">
+                  {new Date(log.timestamp).toLocaleString()}
+                </span>
+                {log.userId && (
+                  <span className="text-white/60">User: {log.userId}</span>
+                )}
               </div>
+              <p className="mt-2 text-white">
+                <span
+                  className={
+                    log.actionType?.includes("ERROR")
+                      ? "text-red-400"
+                      : log.actionType?.includes("WARNING")
+                      ? "text-yellow-400"
+                      : "text-blue-400"
+                  }
+                >
+                  {log.actionType}
+                </span>
+                {log.itemId && (
+                  <span className="text-white/60 ml-2">Item: {log.itemId}</span>
+                )}
+              </p>
             </motion.div>
-          ))}
-        </div>
+          ))
+        )}
       </div>
     </div>
   );

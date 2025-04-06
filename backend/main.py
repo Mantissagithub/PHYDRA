@@ -26,13 +26,14 @@ prisma = Prisma()
 
 app = FastAPI()
 
-origins = [
-    "https://localhost:5173/*",
-]
+# origins = [
+#     "https://localhost:5173/*",
+# ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['*'],
+    allow_credentials=True,
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
@@ -1171,6 +1172,27 @@ async def logs(request: LogsRequest):
 
     return Response(json.dumps({"success":True,"logs":log_data,"errors":[]} ), media_type="application/json")
 
+@app.get("/api/get-logs")
+async def get_logs():
+    logs = await prisma.log.find_many(
+        take=3,
+        order=[{"timestamp": "desc"}]
+    )
+    if not logs:
+        raise HTTPException(status_code=404, detail="No logs found")
+
+    log_data = []
+    for log in logs:
+        l_data = {
+            "timestamp": str(log.timestamp),
+            "userId" : log.userId,
+            "actionType": log.actionType,
+            "itemId": log.itemId,
+            "details" : log.details
+        }
+        log_data.append(l_data)
+
+    return Response(json.dumps({"success":True,"logs":log_data,"errors":[]} ))
 class GetContainers(BaseModel):
     zoneName:str
 class GetItems(BaseModel):
