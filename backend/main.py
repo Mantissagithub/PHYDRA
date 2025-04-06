@@ -477,16 +477,19 @@ async def retrieve(data: RetrieveRequest):
             "preferredZone": itemThing.preferredZone
         }
 
-        log_data = json.dumps({
+        log_data = {
+            "timestamp" : datetime.now(),
             "userId": data.userId,
             "actionType" : "retrieve",
             "itemId": data.itemId,
-            "details" : {
+            "details" : json.dumps({
                 "fromContainer" : containerId,
                 "toContainer" : None,
                 "reason" : "Item retrieved"
-            }
-        })
+            })
+        }
+
+        print(f"Log data: {log_data}")
 
         xm = await prisma.log.create(data=log_data) #type: ignore
         print(f"Log created: {xm}")
@@ -626,15 +629,15 @@ async def place(data:PlaceRequest):
     print("C++ Program Errors:", stderr)
 
     log_data = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(),
         "userId" : data.userId,
         "actionType" : "placed",
         "itemId" : data.itemId,
-        "details" : {
+        "details" : json.dumps({
             "fromContainer" : None,
             "toContainer" : data.containerId,
             "reason" : "Item placed in container"
-        }
+        })
     }
 
     xm = await prisma.log.create(data=log_data) #type: ignore
@@ -703,11 +706,11 @@ async def waste_identify():
                     "userId" : "system",
                     "actionType" : "waste identified",
                     "itemId" : item.itemId,
-                    "details" : {
+                    "details" : json.dumps({
                         "fromContainer" : placements.containerId,
                         "toContainer" : None,
                         "reason" : reason
-                    }
+                    })
                 }
 
                 xm = await prisma.log.create(data=log_data) #type: ignore
@@ -783,15 +786,15 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
 
         # Add log entry for the removed item
         log_data = {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(),
             "userId": "system",  # Assuming the system is performing the operation
             "actionType": "return-plan",
             "itemId": item["itemId"],
-            "details": {
+            "details": json.dumps({
                 "fromContainer": container_id,
                 "toContainer": None,
                 "reason": "Item removed as part of return plan"
-            }
+            })
         }
         try:
             created_log = await prisma.log.create(data=log_data)  # type: ignore

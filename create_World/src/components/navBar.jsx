@@ -10,6 +10,7 @@ import {
   ChevronRight,
   AlertCircle,
 } from "lucide-react";
+import axios from "axios";
 
 export default function Navbar() {
   const [activeButton, setActiveButton] = useState(null);
@@ -457,69 +458,195 @@ const MsgBoxContent = () => {
   );
 };
 
-const UploadCSVContent = ({ gradient }) => (
-  <div className="max-w-3xl mx-auto">
-    <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-      <Upload className="mr-2 h-5 w-5" />
-      Upload CSV Files
-    </h3>
+const UploadCSVContent = ({ gradient }) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [responseMessage, setResponseMessage] = useState(null);
+  const [error, setError] = useState(null);
 
-    <div className="bg-[#15112b]/70 p-5 rounded-xl">
-      <p className="text-white/80 mb-4">
-        Upload CSV files to import containers and items into the system.
-      </p>
+  const handleFileUpload = async (event, endpoint) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-[#1a1535]/50 p-4 rounded-lg border border-white/10">
-          <h4 className="text-white font-medium mb-3">Containers</h4>
-          <p className="text-white/70 text-sm mb-4">
-            Import container data including IDs, dimensions, and locations.
-          </p>
+    const formData = new FormData();
+    formData.append("file", file);
 
-          <div className="relative">
-            <input
-              type="file"
-              accept=".csv"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-              aria-label="Upload containers CSV"
-            />
-            <CustomButton
-              gradient={gradient}
-              className="w-full py-3 justify-center"
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Select Containers CSV
-            </CustomButton>
+    setIsLoading(true);
+    setError(null);
+    setResponseMessage(null);
+
+    try {
+      const response = await axios.post(endpoint, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.data.success) {
+        setResponseMessage(
+          `${response.data.containersImported || response.data.itemsImported} ${
+            response.data.containersImported ? "containers" : "items"
+          } imported successfully.`
+        );
+      } else {
+        setError("Failed to import data. Please try again.");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to connect to the server.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+        <Upload className="mr-2 h-5 w-5" />
+        Upload CSV Files
+      </h3>
+
+      <div className="bg-[#15112b]/70 p-5 rounded-xl">
+        <p className="text-white/80 mb-4">
+          Upload CSV files to import containers and items into the system.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-[#1a1535]/50 p-4 rounded-lg border border-white/10">
+            <h4 className="text-white font-medium mb-3">Containers</h4>
+            <p className="text-white/70 text-sm mb-4">
+              Import container data including IDs, dimensions, and locations.
+            </p>
+
+            <div className="relative">
+              <input
+                type="file"
+                accept=".csv"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                aria-label="Upload containers CSV"
+                onChange={(e) =>
+                  handleFileUpload(
+                    e,
+                    "http://localhost:8000/api/import/containers"
+                  )
+                }
+              />
+              <CustomButton
+                gradient={gradient}
+                className="w-full py-3 justify-center"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <span className="flex items-center">
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Uploading...
+                  </span>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Select Containers CSV
+                  </>
+                )}
+              </CustomButton>
+            </div>
+          </div>
+
+          <div className="bg-[#1a1535]/50 p-4 rounded-lg border border-white/10">
+            <h4 className="text-white font-medium mb-3">Items</h4>
+            <p className="text-white/70 text-sm mb-4">
+              Import item data including IDs, names, and quantities.
+            </p>
+
+            <div className="relative">
+              <input
+                type="file"
+                accept=".csv"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                aria-label="Upload items CSV"
+                onChange={(e) =>
+                  handleFileUpload(e, "http://localhost:8000/api/import/items")
+                }
+              />
+              <CustomButton
+                gradient={gradient}
+                className="w-full py-3 justify-center"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <span className="flex items-center">
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Uploading...
+                  </span>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Select Items CSV
+                  </>
+                )}
+              </CustomButton>
+            </div>
           </div>
         </div>
 
-        <div className="bg-[#1a1535]/50 p-4 rounded-lg border border-white/10">
-          <h4 className="text-white font-medium mb-3">Items</h4>
-          <p className="text-white/70 text-sm mb-4">
-            Import item data including SKUs, quantities, and container
-            assignments.
-          </p>
+        {responseMessage && (
+          <motion.div
+            className="mt-4 p-3 bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-white"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <p>{responseMessage}</p>
+          </motion.div>
+        )}
 
-          <div className="relative">
-            <input
-              type="file"
-              accept=".csv"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-              aria-label="Upload items CSV"
-            />
-            <CustomButton
-              gradient={gradient}
-              className="w-full py-3 justify-center"
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Select Items CSV
-            </CustomButton>
-          </div>
-        </div>
+        {error && (
+          <motion.div
+            className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-white"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <p>{error}</p>
+          </motion.div>
+        )}
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 function CustomButton({ onClick, children, gradient, className = "" }) {
   return (

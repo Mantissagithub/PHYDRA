@@ -196,7 +196,7 @@ const ContainerDashboard = ({ zoneName, zoneImgUrl }) => {
               >
                 &times;
               </button>
-              <ItemDashboard containerId={selectedContainer} />
+              <ItemDashboard containerIdx={selectedContainer} />
             </motion.div>
           </motion.div>
         )}
