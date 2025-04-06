@@ -2,7 +2,7 @@ from hmac import new
 from os import times
 from sys import stdin
 from textwrap import indent
-from fastapi import FastAPI,Request,Response, HTTPException, UploadFile
+from fastapi import FastAPI,Request,Response, HTTPException, UploadFile, Query
 import json
 from pydantic import BaseModel
 # from sqlmodel import Field, Session, SQLModel, create_engine, select
@@ -13,6 +13,7 @@ import csv
 from prisma import Prisma
 from prisma.models import Item, Container as PrismaContainer, Zone, Placement, Log
 from datetime import datetime, date, timedelta
+from fastapi.middleware.cors import CORSMiddleware
 
 import subprocess
 import re
@@ -25,6 +26,16 @@ prisma = Prisma()
 
 app = FastAPI()
 
+origins = [
+    "https://localhost:5173/*",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 curr_date_iso_format = date.today().isoformat()
 curr_date = date.today()
 
@@ -1176,10 +1187,8 @@ async def get_items(data:GetItems):
     return Response(json.dumps({"Response":"Success","items":items_ids}))
 
 @app.get("/api/get-containers")
-async def get_containers(data:GetContainers):
-    zone_name = data.zoneName
-
-    container_data = await prisma.container.find_many(where={"zone": zone_name})
+async def get_containers(zoneName: str = Query(..., title="Zone Name")):
+    container_data = await prisma.container.find_many(where={"zone": zoneName})
     
     print(container_data)
     
@@ -1187,4 +1196,4 @@ async def get_containers(data:GetContainers):
     for container in container_data:
         containers.add(container.containerId)
     
-    return Response(json.dumps({"Response":"Success","Containers":str(list(containers))}))
+    return {"Response": "Success", "Containers": list(containers)}

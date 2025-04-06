@@ -12,6 +12,7 @@
   "dependencies": {
     "@react-three/fiber": "^9.1.0",
     "@tailwindcss/vite": "^4.0.14",
+    "axios": "^1.8.4",
     "framer-motion": "^12.5.0",
     "gsap": "^3.12.7",
     "lucide-react": "^0.487.0",

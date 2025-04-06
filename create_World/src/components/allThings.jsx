@@ -1,15 +1,24 @@
-"use client"
-import { motion } from "framer-motion"
+"use client";
+import React, { useState, useCallback } from "react";
+import { motion } from "framer-motion";
 
-import CrewQuarters from "./crewQuarters"
-import AirLock from "./airLock"
-import Laboratory from "./laboratory"
-import EngineeringBay from "./engineeringBay"
-import WasteManagement from "./wasteManagement"
-import DockingArea from "./dockingArea"
-import Navbar from "./navBar"
+import CrewQuarters from "./crewQuarters";
+import AirLock from "./airLock";
+import Laboratory from "./laboratory";
+import EngineeringBay from "./engineeringBay";
+import WasteManagement from "./wasteManagement";
+import DockingArea from "./dockingArea";
+import Navbar from "./navBar";
+import SpaceZonesDashboard from "./zoneThing";
+import ContainerDashboard from "./containerThing";
 
 const SpaceStationLayout = () => {
+  const [activeZone, setActiveZone] = useState(null);
+  const [zoneData, setZoneData] = useState("")
+
+  console.log("Active Zone:", activeZone);
+  console.log("Zone Data:", zoneData);
+
   // Container animation
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -20,7 +29,7 @@ const SpaceStationLayout = () => {
         delayChildren: 0.2,
       },
     },
-  }
+  };
 
   // Item animation
   const itemVariants = {
@@ -52,7 +61,7 @@ const SpaceStationLayout = () => {
         damping: 15,
       },
     },
-  }
+  };
 
   // Glow pulse animation
   const glowPulse = {
@@ -65,7 +74,7 @@ const SpaceStationLayout = () => {
         ease: "easeInOut",
       },
     },
-  }
+  };
 
   // Blueprint grid pattern
   const blueprintPattern = {
@@ -74,7 +83,7 @@ const SpaceStationLayout = () => {
       linear-gradient(90deg, rgba(0, 149, 255, 0.05) 1px, transparent 1px)
     `,
     backgroundSize: "20px 20px",
-  }
+  };
 
   return (
     <div
@@ -91,16 +100,16 @@ const SpaceStationLayout = () => {
       </div>
 
       {/* Navbar */}
-        <div
-          className="absolute top-0 left-0 w-full p-4 z-50 bg-#15112b bg-opacity-50 rounded-lg shadow-lg"
-          style={{
-            transform: "translateZ(100px)",
-            perspective: "1000px",
-          }}
-        >
-          <Navbar />
-        </div>
-        {/* Animated glow effect */}
+      <div
+        className="absolute top-0 left-0 w-full p-4 z-50 bg-#15112b bg-opacity-50 rounded-lg shadow-lg"
+        style={{
+          transform: "translateZ(100px)",
+          perspective: "1000px",
+        }}
+      >
+        <Navbar />
+      </div>
+      {/* Animated glow effect */}
       <motion.div
         className="absolute top-1/2 left-1/2 w-96 h-96 rounded-full bg-cyan-500/20 blur-3xl"
         variants={glowPulse}
@@ -110,9 +119,22 @@ const SpaceStationLayout = () => {
           transform: "translate(-50%, -50%)",
         }}
       ></motion.div>
+
+      {/* Main content */}
+      <motion.div
+        className="flex flex-col items-center justify-center w-full h-full"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {activeZone ? (
+          <ContainerDashboard zoneName={activeZone.name} zoneImg={activeZone.imageUrl} />
+        ) : (
+          <SpaceZonesDashboard setZoneData={setZoneData} />
+        )}
+      </motion.div>
     </div>
-  )
-}
+  );
+};
 
-export default SpaceStationLayout
-
+export default SpaceStationLayout;
