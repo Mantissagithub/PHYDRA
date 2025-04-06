@@ -1139,9 +1139,8 @@ class LogsRequest(BaseModel):
     itemId: Optional[str] = None
     userId: Optional[str] = None
     actionType: Optional[str] = None
-
 @app.get("/api/logs")
-def logs(request: LogsRequest):
+async def logs(request: LogsRequest):
     start_date = datetime.fromisoformat(request.startDate)
     end_date = datetime.fromisoformat(request.endDate)
     item_id = request.itemId
@@ -1155,8 +1154,22 @@ def logs(request: LogsRequest):
         actionType=action_type
     )
 
-    logs = prisma.log.find_many(where=where.dict(exclude_none=True)) #type: ignore
-    return logs
+    logs = await prisma.log.find_many(where=where.dict(exclude_none=True)) #type: ignore
+    if(not logs):
+        raise HTTPException(status_code=404, detail="No logs found")
+    
+    log_data = []
+    for log in logs:
+        l_data = {
+            "timestamp": log.timestamp,
+            "userId" : log.userId,
+            "actionType": log.actionType,
+            "itemId": log.itemId,
+            "details" : log.details
+        }
+        log_data.append(l_data)
+
+    return Response(json.dumps({"success":True,"logs":log_data,"errors":[]} ), media_type="application/json")
 
 class GetContainers(BaseModel):
     zoneName:str

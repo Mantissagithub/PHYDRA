@@ -1,46 +1,35 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { motion, AnimatePresence } from "framer-motion";
-import gsap from "gsap";
-import { Info, AlertCircle } from "lucide-react";
 
 const ItemDashboard = ({ containerIdx }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [itemDetails, setItemDetails] = useState({});
-  const [selectedItemId, setSelectedItemId] = useState(null); // Track the selected item
-  const dashboardRef = useRef(null);
-
-  // GSAP animation setup
-  useEffect(() => {
-    if (dashboardRef.current) {
-      gsap.from(dashboardRef.current, {
-        opacity: 0,
-        y: 20,
-        duration: 0.8,
-        ease: "power3.out",
-      });
-    }
-  }, []);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [itemDetails, setItemDetails] = useState(null);
 
   const fetchItems = async () => {
-    setLoading(true);
-    setError(null);
     try {
-      const response = await axios.get("http://localhost:5000/api/get-items", {
+      const response = await axios.get("http://localhost:8000/api/get-items", {
         params: { containerId: containerIdx },
-        headers: { "Content-Type": "application/json" },
       });
-
+      console.log("API Response:", response.data); // Debug response
       if (response.data.Response === "Success") {
-        setItems(response.data.items);
+        if (Array.isArray(response.data.items)) {
+          setItems(response.data.items);
+          if (response.data.items.length === 0) {
+            setError("No items in container");
+          }
+        } else {
+          console.error("Items is not an array:", response.data.items);
+          setError("Invalid data format received");
+        }
       } else {
-        setError("Container not found or empty");
+        setError("Failed to fetch items");
       }
-    } catch (error) {
-      setError("Failed to connect to server");
-      console.error(error);
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setError("Failed to load items");
     } finally {
       setLoading(false);
     }
@@ -48,170 +37,121 @@ const ItemDashboard = ({ containerIdx }) => {
 
   const retrieveItemData = async (itemId) => {
     try {
-      const response = await axios.get("http://localhost:5000/api/getItemData", {
-        params: { itemId },
-      });
+      const response = await axios.get(
+        "http://localhost:8000/api/getItemData",
+        {
+          params: { itemId },
+        }
+      );
+      console.log("Item details response:", response.data);
 
       if (response.data.Response === "Success") {
-        setItemDetails((prev) => ({
-          ...prev,
-          [itemId]: response.data.Item,
-        }));
-        setSelectedItemId(itemId); // Set the selected item ID
-
-        // Animate details panel
-        gsap.from(`#details-${itemId}`, {
-          opacity: 0,
-          x: -20,
-          duration: 0.4,
-        });
+        setItemDetails(response.data.Item);
+        setSelectedItem(itemId);
       }
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error("Error fetching item details:", err);
     }
   };
 
-  const closeDetails = () => {
-    setSelectedItemId(null); // Close the currently open details
+  const toggleItemDetails = (itemId) => {
+    if (selectedItem === itemId) {
+      // If clicking on already selected item, hide details
+      setSelectedItem(null);
+      setItemDetails(null);
+    } else {
+      // If clicking on new item, fetch its details
+      retrieveItemData(itemId);
+    }
   };
 
   useEffect(() => {
-    if (!containerIdx) {
-      setError("No container ID provided");
-      return;
-    }
-    fetchItems();
+    console.log("Container ID:", containerIdx); // Debug containerIdx
+    if (containerIdx) fetchItems();
   }, [containerIdx]);
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 },
-    exit: { opacity: 0, x: -50 },
-  };
+  // Debug render
+  console.log("Current items:", items);
+  console.log("Loading:", loading);
+  console.log("Error:", error);
+
+  if (loading)
+    return <div className="text-[#ffffff] text-center">Loading...</div>;
+  if (error) return <div className="text-[#f05672] text-center">{error}</div>;
 
   return (
-    <div
-      ref={dashboardRef}
-      className="p-6 bg-gray-50 min-h-screen"
-      onClick={closeDetails} // Close details when clicking outside
-    >
-      <h2 className="text-3xl font-bold text-blue-600 mb-8">
-        Item Management Dashboard
+    <div className="bg-[#15112b] p-2 rounded-lg w-full max-h-[500px]">
+      <h2 className="text-lg text-[#ffffff] font-bold mb-2 px-2">
+        Items in Container {containerIdx}
       </h2>
 
-      {error && (
-        <div className="p-4 mb-4 bg-red-100 text-red-700 rounded-lg flex items-center">
-          <AlertCircle className="mr-2" />
-          {error}
-        </div>
-      )}
-
-      <AnimatePresence>
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {items.map((item) => (
-              <motion.div
-                key={item.itemId}
-                variants={itemVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                className="flex justify-between items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
-                onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+      <div className="space-y-1.5 overflow-y-auto max-h-[400px] pr-2">
+        {items.map((item) => (
+          <div
+            key={item.itemId}
+            className="bg-[#f48599] rounded-lg p-2 transition-all duration-200"
+          >
+            <div className="flex justify-between items-center">
+              <div className="text-[#15112b] min-w-0 flex-1 mr-2">
+                <div className="font-medium text-sm truncate">
+                  {item.itemName}
+                </div>
+                <div className="text-xs opacity-75">ID: {item.itemId}</div>
+              </div>
+              <button
+                onClick={() => toggleItemDetails(item.itemId)}
+                className="px-2 py-1 bg-[#15112b] text-white text-xs rounded hover:bg-opacity-80 whitespace-nowrap"
               >
-                <div className="flex items-center">
-                  <Info className="text-blue-500 mr-3" />
-                  <div>
-                    <span className="block font-mono text-gray-700">
-                      {item.itemId}
+                {selectedItem === item.itemId ? "Hide" : "View"}
+              </button>
+            </div>
+
+            {selectedItem === item.itemId && itemDetails && (
+              <div className="mt-2 pt-2 border-t border-[#15112b]/10">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-[#15112b]">
+                  <div className="flex items-center">
+                    <span className="opacity-75 mr-1">Mass:</span>
+                    <span>{itemDetails.mass}kg</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="opacity-75 mr-1">Priority:</span>
+                    <span>{itemDetails.priority}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="opacity-75 mr-1">Usage:</span>
+                    <span>{itemDetails.usageLimit}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="opacity-75 mr-1">Zone:</span>
+                    <span>{itemDetails.preferredZone}</span>
+                  </div>
+                  <div className="col-span-2 flex items-center">
+                    <span className="opacity-75 mr-1">Size:</span>
+                    <span>
+                      {itemDetails.width}×{itemDetails.depth}×
+                      {itemDetails.height}cm
                     </span>
-                    <span className="block text-sm text-gray-500">
-                      {item.itemName}
+                  </div>
+                  <div className="col-span-2 flex items-center">
+                    <span className="opacity-75 mr-1">Expires:</span>
+                    <span>
+                      {new Date(itemDetails.expiryDate).toLocaleDateString()}
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={() => retrieveItemData(item.itemId)}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center"
-                >
-                  Retrieve Data
-                  <svg
-                    className="ml-2 w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M14 5l7 7m0 0l-7 7m7-7H3"
-                    />
-                  </svg>
-                </button>
-              </motion.div>
-            ))}
+              </div>
+            )}
           </div>
-        )}
-      </AnimatePresence>
+        ))}
 
-      <div className="mt-8 space-y-6">
-        {selectedItemId && itemDetails[selectedItemId] && (
-          <div
-            id={`details-${selectedItemId}`}
-            className="p-6 bg-white rounded-xl shadow-lg border-l-4 border-blue-500"
-          >
-            <h3 className="text-xl font-semibold mb-4 text-gray-800">
-              Item Details: {selectedItemId}
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <DetailItem
-                label="Name"
-                value={itemDetails[selectedItemId].name}
-              />
-              <DetailItem
-                label="Dimensions"
-                value={`${itemDetails[selectedItemId].width} × ${itemDetails[selectedItemId].depth} × ${itemDetails[selectedItemId].height} cm`}
-              />
-              <DetailItem
-                label="Mass"
-                value={`${itemDetails[selectedItemId].mass} kg`}
-              />
-              <DetailItem
-                label="Priority"
-                value={itemDetails[selectedItemId].priority}
-              />
-              <DetailItem
-                label="Expiry Date"
-                value={new Date(
-                  itemDetails[selectedItemId].expiryDate
-                ).toLocaleDateString()}
-              />
-              <DetailItem
-                label="Usage Limit"
-                value={itemDetails[selectedItemId].usageLimit}
-              />
-              <DetailItem
-                label="Preferred Zone"
-                value={itemDetails[selectedItemId].preferredZone}
-              />
-            </div>
+        {items.length === 0 && (
+          <div className="text-[#ffffff] text-center py-2 text-xs bg-[#1e1a3c] rounded-lg">
+            No items found
           </div>
         )}
       </div>
     </div>
   );
 };
-
-const DetailItem = ({ label, value }) => (
-  <div className="p-3 bg-gray-50 rounded-lg">
-    <span className="block text-sm font-medium text-gray-500">{label}</span>
-    <span className="block mt-1 text-gray-800">{value || "-"}</span>
-  </div>
-);
 
 export default ItemDashboard;

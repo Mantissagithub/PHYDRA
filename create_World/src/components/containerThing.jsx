@@ -1,49 +1,52 @@
-import React, { useEffect, useState, useRef } from "react"
-import axios from "axios"
-import { motion, AnimatePresence } from "framer-motion"
-import gsap from "gsap"
-import { Rocket } from "lucide-react"
-import ItemDashboard from "./itemThing"
+import React, { useEffect, useState, useRef } from "react";
+import axios from "axios";
+import { motion, AnimatePresence } from "framer-motion";
+import gsap from "gsap";
+import { Rocket } from "lucide-react";
+import ItemDashboard from "./itemThing";
 
 const ContainerDashboard = ({ zoneName, zoneImgUrl }) => {
-  const [containers, setContainers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [selectedContainer, setSelectedContainer] = useState(null) // State for selected container
+  const [containers, setContainers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedContainer, setSelectedContainer] = useState(null); // State for selected container
 
-  const formattedZoneName = zoneName.replace(" ", "_")
-  console.log("zoneName", formattedZoneName)
+  const formattedZoneName = zoneName.replace(" ", "_");
+  console.log("zoneName", formattedZoneName);
 
   const fetchContainers = async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
     try {
-      const response = await axios.get("http://localhost:5000/api/get-containers", {
-        params: {
-          zoneName: formattedZoneName,
-        },
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-      })
+      const response = await axios.get(
+        "http://localhost:8000/api/get-containers",
+        {
+          params: {
+            zoneName: formattedZoneName,
+          },
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+        }
+      );
       if (response.data.Response === "Success") {
-        console.log(response.data.Containers)
-        setContainers(response.data.Containers)
+        console.log(response.data.Containers);
+        setContainers(response.data.Containers);
       } else {
-        setError("Failed to fetch containers")
+        setError("Failed to fetch containers");
       }
     } catch (error) {
-      setError("Failed to fetch containers")
-      console.error(error)
+      setError("Failed to fetch containers");
+      console.error(error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchContainers()
-  }, [zoneName])
+    fetchContainers();
+  }, [zoneName]);
 
   const containerVariants = {
     hidden: { opacity: 0, y: 50, scale: 0.8 },
@@ -65,9 +68,9 @@ const ContainerDashboard = ({ zoneName, zoneImgUrl }) => {
         duration: 0.2,
       },
     },
-  }
+  };
 
-  const zoneImageRef = useRef(null)
+  const zoneImageRef = useRef(null);
 
   useEffect(() => {
     if (zoneImageRef.current) {
@@ -83,13 +86,13 @@ const ContainerDashboard = ({ zoneName, zoneImgUrl }) => {
           duration: 1,
           ease: "power3.out",
         }
-      )
+      );
     }
-  }, [zoneName])
+  }, [zoneName]);
 
   const closeModal = () => {
-    setSelectedContainer(null)
-  }
+    setSelectedContainer(null);
+  };
 
   return (
     <div className="bg-[#15112b] text-white py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
@@ -103,11 +106,16 @@ const ContainerDashboard = ({ zoneName, zoneImgUrl }) => {
           <div className="flex items-center mb-4">
             <Rocket className="w-8 h-8 mr-3 text-[#f48599]" />
             <h1 className="text-4xl md:text-5xl font-bold">
-              <span className="bg-gradient-to-r from-[#f05672] to-[#f8b4c0] text-transparent bg-clip-text">Container Dashboard</span>
+              <span className="bg-gradient-to-r from-[#f05672] to-[#f8b4c0] text-transparent bg-clip-text">
+                Container Dashboard
+              </span>
             </h1>
           </div>
           <div className="text-[#e6e6e6] text-center max-w-2xl">
-            <p className="text-sm md:text-base">Real-time monitoring system for International Space Station containers.</p>
+            <p className="text-sm md:text-base">
+              Real-time monitoring system for International Space Station
+              containers.
+            </p>
           </div>
         </motion.div>
 
@@ -119,7 +127,9 @@ const ContainerDashboard = ({ zoneName, zoneImgUrl }) => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            <h2 className="text-2xl font-semibold text-[#f8b4c0] mb-4">Zone: {zoneName}</h2>
+            <h2 className="text-2xl font-semibold text-[#f8b4c0] mb-4">
+              Zone: {zoneName}
+            </h2>
             <img
               ref={zoneImageRef}
               src={zoneImgUrl}
@@ -135,7 +145,9 @@ const ContainerDashboard = ({ zoneName, zoneImgUrl }) => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            <h2 className="text-2xl font-semibold text-[#f8b4c0] mb-4">Containers</h2>
+            <h2 className="text-2xl font-semibold text-[#f8b4c0] mb-4">
+              Containers
+            </h2>
             {loading ? (
               <div className="flex justify-center items-center h-32">
                 <div className="relative w-10 h-10">
@@ -156,7 +168,9 @@ const ContainerDashboard = ({ zoneName, zoneImgUrl }) => {
                       animate="visible"
                       exit="exit"
                     >
-                      <h3 className="text-lg font-medium text-[#f8b4c0] mb-2">{container}</h3>
+                      <h3 className="text-lg font-medium text-[#f8b4c0] mb-2">
+                        {container}
+                      </h3>
                       <motion.button
                         whileHover={{ scale: 1.05, backgroundColor: "#f05672" }}
                         whileTap={{ scale: 0.95 }}
@@ -178,31 +192,35 @@ const ContainerDashboard = ({ zoneName, zoneImgUrl }) => {
       <AnimatePresence>
         {selectedContainer && (
           <motion.div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            onClick={closeModal}
           >
             <motion.div
-              className="bg-[#1e1a3c] rounded-2xl p-6 shadow-2xl w-full max-w-lg"
-              initial={{ scale: 0.8, opacity: 0 }}
+              className="bg-[#1e1a3c] rounded-lg shadow-2xl w-[400px] overflow-hidden"
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <button
-                className="absolute top-4 right-4 text-[#f48599] hover:text-[#f05672] text-xl"
-                onClick={closeModal}
-              >
-                &times;
-              </button>
-              <ItemDashboard containerIdx={selectedContainer} />
+              <div className="relative">
+                <button
+                  className="absolute top-2 right-2 text-white/60 hover:text-white text-lg w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10"
+                  onClick={closeModal}
+                >
+                  ×
+                </button>
+                <ItemDashboard containerIdx={selectedContainer} />
+              </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
-  )
-}
+  );
+};
 
-export default ContainerDashboard
+export default ContainerDashboard;
