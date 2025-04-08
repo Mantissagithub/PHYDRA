@@ -1,15 +1,15 @@
 # 🚢 Cargo Stowage Management System — PHYDRA
 
-Welcome aboard *PHYDRA* — an end-to-end, multi-language *Cargo Stowage Management System* built with love 💙 for the *ISS Hackathon*. Designed to smartly and efficiently organize cargo using powerful algorithms and a seamless interface!
+Welcome aboard _PHYDRA_ — an end-to-end, multi-language _Cargo Stowage Management System_ built with love 💙 for the _ISS Hackathon_. Designed to smartly and efficiently organize cargo using powerful algorithms and a seamless interface!
 
 ---
 
 ## 🌟 Tech Highlights
 
-- 🧠⚙️ *C++ meets FastAPI* — Experience lightning-fast cargo arrangement powered by C++ logic, wrapped beautifully with a Python FastAPI backend to offer both brains and brawn in one smooth API layer!
-- 🌐 *Modern Frontend* — Interactive, responsive, and intuitive UI to visualize and interact with the system like a pro.
-- 🐳 *Dockerized Deployment* — Ship it anywhere with Docker — portable, efficient, and reliable.
-- 🛢️ *Prisma (Python)* — Elegant database modeling and ORM for seamless data flow and management.
+- 🧠⚙️ _C++ meets FastAPI_ — Experience lightning-fast cargo arrangement powered by C++ logic, wrapped beautifully with a Python FastAPI backend to offer both brains and brawn in one smooth API layer!
+- 🌐 _Modern Frontend_ — Interactive, responsive, and intuitive UI to visualize and interact with the system like a pro.
+- 🐳 _Dockerized Deployment_ — Ship it anywhere with Docker — portable, efficient, and reliable.
+- 🛢️ _Prisma (Python)_ — Elegant database modeling and ORM for seamless data flow and management.
 
 ---
 
@@ -30,10 +30,10 @@ PHYDRA/
 │   └── schema.prisma          # Prisma schema for database structure
 ```
 
-
 ---
 
 ## 🚀 Getting Started
+
 ### 🔁 Clone the Repository (Shallow Clone Recommended)
 
 > The `.git` file is too large, so it's recommended to clone only the latest version with depth.
@@ -53,13 +53,11 @@ cd PHYDRA
 sudo docker build -t phydra .
 ```
 
-
 ### 2️⃣ Run the Backend Container
 
 ```bash
 sudo docker run -d -p 8000:8000 --name phydra-backend phydra
 ```
-
 
 🎯 Your backend is now live at: [http://localhost:8000](http://localhost:8000)
 
@@ -102,20 +100,17 @@ prisma generate
 cd frontend/
 ```
 
-
 ### 2️⃣ Install Dependencies
 
 ```bash
 npm install
 ```
 
-
 ### 3️⃣ Launch Dev Server
 
 ```bash
 npm run dev
 ```
-
 
 ✨ Access the frontend at: [http://localhost:5173](http://localhost:5173)
 
@@ -133,7 +128,7 @@ npm run dev
 
 ## 🤝 Built With Team Spirit
 
-Crafted during the *ISS Hackathon* to solve real-world challenges with innovation, collaboration, and joy!  
+Crafted during the _ISS Hackathon_ to solve real-world challenges with innovation, collaboration, and joy!  
 We believe in building not just solutions — but delightful experiences.
 
 ## 👥 Contributors
@@ -142,6 +137,6 @@ We believe in building not just solutions — but delightful experiences.
 2. Harish - [GitHub](https://github.com/HARISH20205)
 3. Dalton - [GitHub](https://github.com/Daltonar05)
 4. Rakshith - [GitHub](https://github.com/RAAKISG)
-5. Yuvaensh - [GitHub](https://github.com/YuvaneshSankar)
+5. Yuvanesh - [GitHub](https://github.com/YuvaneshSankar)
 
 ---

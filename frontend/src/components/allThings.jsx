@@ -2,19 +2,13 @@
 import React, { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 
-import CrewQuarters from "./crewQuarters";
-import AirLock from "./airLock";
-import Laboratory from "./laboratory";
-import EngineeringBay from "./engineeringBay";
-import WasteManagement from "./wasteManagement";
-import DockingArea from "./dockingArea";
 import Navbar from "./navBar";
 import SpaceZonesDashboard from "./zoneThing";
 import ContainerDashboard from "./containerThing";
 
 const SpaceStationLayout = () => {
   const [activeZone, setActiveZone] = useState(null);
-  const [zoneData, setZoneData] = useState("")
+  const [zoneData, setZoneData] = useState("");
 
   console.log("Active Zone:", activeZone);
   console.log("Zone Data:", zoneData);
@@ -128,7 +122,10 @@ const SpaceStationLayout = () => {
         animate="visible"
       >
         {activeZone ? (
-          <ContainerDashboard zoneName={activeZone.name} zoneImg={activeZone.imageUrl} />
+          <ContainerDashboard
+            zoneName={activeZone.name}
+            zoneImg={activeZone.imageUrl}
+          />
         ) : (
           <SpaceZonesDashboard setZoneData={setZoneData} />
         )}
