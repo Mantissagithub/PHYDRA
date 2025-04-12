@@ -28,7 +28,7 @@ RUN . $NVM_DIR/nvm.sh && nvm install 20 && nvm use 20
 
 # Copy requirements and install Python dependencies
 COPY backend/requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt 
+RUN pip3 install --no-cache-dir -r requirements.txt 
 
 COPY backend /app
 COPY prisma /app/prisma
@@ -37,11 +37,12 @@ COPY prisma /app/prisma
 RUN prisma generate --schema=prisma/schema.prisma
 
 # Expose the application port
-EXPOSE ${PORT}
+EXPOSE 8000
 
-# Add a health check to ensure the app is running
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/ || exit 1
+# # Add a health check to ensure the app is running
+# HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+#     CMD curl -f http://localhost:${PORT}/ || exit 1
 
 # Run the FastAPI server using Uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python3", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

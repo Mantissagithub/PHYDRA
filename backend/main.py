@@ -21,6 +21,7 @@ import re
 from sympy import content
 from tomlkit import item
 from fastapi.responses import FileResponse
+import uvicorn
 
 prisma = Prisma()
 
@@ -1243,3 +1244,7 @@ async def get_containers(zoneName: str = Query(..., title="Zone Name")):
         containers.add(container.containerId)
     
     return {"Response": "Success", "Containers": list(containers)}
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
