@@ -39,6 +39,7 @@ RUN prisma generate --schema=prisma/schema.prisma
 # Expose the application port
 EXPOSE 8000
 
+
 # # Add a health check to ensure the app is running
 # HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 #     CMD curl -f http://localhost:${PORT}/ || exit 1
