@@ -1,7 +1,8 @@
 FROM ubuntu:22.04
 
 ENV PORT=8000
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/backend
+ENV NODE_VERSION=20
 
 WORKDIR /app
 
@@ -28,9 +29,9 @@ RUN . $NVM_DIR/nvm.sh && nvm install 20 && nvm use 20
 
 # Copy requirements and install Python dependencies
 COPY backend/requirements.txt /app/
-RUN pip3 install --no-cache-dir -r requirements.txt 
+RUN pip install --no-cache-dir -r requirements.txt 
 
-COPY backend /app
+COPY backend /app/backend
 COPY prisma /app/prisma
 
 # Generate Prisma client
@@ -38,7 +39,6 @@ RUN prisma generate --schema=prisma/schema.prisma
 
 # Expose the application port
 EXPOSE 8000
-
 
 # # Add a health check to ensure the app is running
 # HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
