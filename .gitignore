@@ -1,4 +1,4 @@
 test.txt
 myenv
 **/__pycache__
-.env*
+# .env*
