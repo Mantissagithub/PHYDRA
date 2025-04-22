@@ -10,7 +10,7 @@ const ItemDashboard = ({ containerIdx }) => {
 
   const fetchItems = async () => {
     try {
-      const response = await axios.get("http://localhost:8000/api/get-items", {
+      const response = await axios.get("https://phydra.onrender.com/api/get-items", {
         params: { containerId: containerIdx },
       });
       console.log("API Response:", response.data); // Debug response
@@ -38,7 +38,7 @@ const ItemDashboard = ({ containerIdx }) => {
   const retrieveItemData = async (itemId) => {
     try {
       const response = await axios.get(
-        "http://localhost:8000/api/getItemData",
+        "https://phydra.onrender.com/api/getItemData",
         {
           params: { itemId },
         }

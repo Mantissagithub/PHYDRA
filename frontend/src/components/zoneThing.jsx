@@ -226,7 +226,7 @@ export default function SpaceZonesDashboard({ setZoneData }) {
     const fetchZones = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:5173/api/get-zones",
+          "https://phydra.onrender.com/api/get-zones",
           {
             headers: {
               "Content-Type": "application/json",

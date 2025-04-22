@@ -19,7 +19,7 @@ const ContainerDashboard = ({ zoneName, zoneImgUrl }) => {
     setError(null);
     try {
       const response = await axios.get(
-        "http://localhost:8000/api/get-containers",
+        "https://phydra.onrender.com/api/get-containers",
         {
           params: {
             zoneName: formattedZoneName,
