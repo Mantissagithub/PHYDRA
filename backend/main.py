@@ -176,7 +176,7 @@ async def placement(data: PlacementRequest):
         ]
     }, indent=4)
 
-    command = "g++ -std=c++20 final_cpp_codes/priorityCalculationEngine.cpp -o final_cpp_codes/priorityCalculationEngine && ./final_cpp_codes/priorityCalculationEngine"
+    command = "g++ -std=c++20 ./final_cpp_codes/priorityCalculationEngine.cpp -o ./final_cpp_codes/priorityCalculationEngine && ./final_cpp_codes/priorityCalculationEngine"
     process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
     stdout, stderr = process.communicate(input=input_data)
 
@@ -224,7 +224,7 @@ async def placement(data: PlacementRequest):
         "containers": [c.dict() for c in containers]
     }, indent=4)
 
-    command = "g++ -std=c++20 final_cpp_codes/3dBinPakckingAlgo.cpp -o final_cpp_codes/3dBinPakckingAlgo && ./final_cpp_codes/3dBinPakckingAlgo"
+    command = "g++ -std=c++20 ./final_cpp_codes/3dBinPakckingAlgo.cpp -o ./final_cpp_codes/3dBinPakckingAlgo && ./final_cpp_codes/3dBinPakckingAlgo"
     process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
     stdout, stderr = process.communicate(input=final_json)
 
@@ -405,7 +405,7 @@ async def search(data:SearchRequest):
         "itemId": itemId
     }, indent=4)
 
-    command = "g++ -std=c++20 final_cpp_codes/retrievalPathPlanning.cpp -o final_cpp_codes/retrievalPathPlanning && ./final_cpp_codes/retrievalPathPlanning"
+    command = "g++ -std=c++20 ./final_cpp_codes/retrievalPathPlanning.cpp -o ./final_cpp_codes/retrievalPathPlanning && ./final_cpp_codes/retrievalPathPlanning"
     process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
     stdout, stderr = process.communicate(input=input_json)
 
@@ -623,7 +623,7 @@ async def place(data:PlaceRequest):
     }, indent=4)
 
     print(input_json)
-    command = "g++ -std=c++20 final_cpp_codes/placingItem.cpp -o final_cpp_codes/placingItem && ./final_cpp_codes/placingItem"
+    command = "g++ -std=c++20 ./final_cpp_codes/placingItem.cpp -o ./final_cpp_codes/placingItem && ./final_cpp_codes/placingItem"
     process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
     stdout, stderr = process.communicate(input=input_json)
 
@@ -821,7 +821,7 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
         "containers": container_data
     }, indent=4)
     print("*", input_json)
-    command = "g++ -std=c++20 final_cpp_codes/3dBinPakckingAlgo.cpp -o final_cpp_codes/3dBinPakckingAlgo && ./final_cpp_codes/3dBinPakckingAlgo"
+    command = "g++ -std=c++20 ./final_cpp_codes/3dBinPakckingAlgo.cpp -o ./final_cpp_codes/3dBinPakckingAlgo && ./final_cpp_codes/3dBinPakckingAlgo"
     process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
     stdout, stderr = process.communicate(input=input_json)
 
@@ -875,7 +875,7 @@ async def waste_return_plan(data: WasteReturnPlanRequest):
 
         print("*" * 50, "\nInput JSON:", input_json)
 
-        command = "g++ -std=c++20 final_cpp_codes/retrievalPathPlanning.cpp -o final_cpp_codes/retrievalPathPlanning && ./final_cpp_codes/retrievalPathPlanning"
+        command = "g++ -std=c++20 ./final_cpp_codes/retrievalPathPlanning.cpp -o ./final_cpp_codes/retrievalPathPlanning && ./final_cpp_codes/retrievalPathPlanning"
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
         stdout, stderr = process.communicate(input=input_json)
 
