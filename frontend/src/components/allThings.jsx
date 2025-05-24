@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion"; // Added AnimatePresence
 
 import Navbar from "./navBar";
 import SpaceZonesDashboard from "./zoneThing";
@@ -81,7 +81,7 @@ const SpaceStationLayout = () => {
 
   return (
     <div
-      className="bg-[#050A14] min-h-screen p-6 md:p-10 flex items-center justify-center overflow-hidden relative min-w-screen"
+      className="bg-primary-dark min-h-screen p-6 md:p-10 flex items-center justify-center overflow-hidden relative min-w-screen" // Updated background and padding
       style={blueprintPattern}
     >
       {/* Background elements */}
@@ -95,7 +95,7 @@ const SpaceStationLayout = () => {
 
       {/* Navbar */}
       <div
-        className="absolute top-0 left-0 w-full p-4 z-50 bg-#15112b bg-opacity-50 rounded-lg shadow-lg"
+        className="absolute top-0 left-0 w-full p-4 z-50 bg-nav-bg-start/50 rounded-lg shadow-lg" // Updated Navbar container background
         style={{
           transform: "translateZ(100px)",
           perspective: "1000px",
@@ -116,19 +116,30 @@ const SpaceStationLayout = () => {
 
       {/* Main content */}
       <motion.div
-        className="flex flex-col items-center justify-center w-full h-full"
+        className="flex flex-col items-center justify-center w-full h-full mt-20 md:mt-24" // Added margin-top to avoid overlap with fixed navbar
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
-        {activeZone ? (
-          <ContainerDashboard
-            zoneName={activeZone.name}
-            zoneImg={activeZone.imageUrl}
-          />
-        ) : (
-          <SpaceZonesDashboard setZoneData={setZoneData} />
-        )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeZone ? activeZone.name : "zones-dashboard"} // Ensure key changes for AnimatePresence
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            transition={{ duration: 0.3 }}
+            className="w-full" // Ensure the motion.div takes full width for layout
+          >
+            {activeZone ? (
+              <ContainerDashboard
+                zoneName={activeZone.name}
+                zoneImgUrl={activeZone.imageUrl} // Corrected prop name: zoneImg to zoneImgUrl
+              />
+            ) : (
+              <SpaceZonesDashboard setZoneData={setZoneData} />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </motion.div>
     </div>
   );
