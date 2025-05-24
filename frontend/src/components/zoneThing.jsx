@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import gsap from "gsap";
+// import gsap from "gsap"; // GSAP will be removed
 import axios from "axios";
 import {
   Rocket,
@@ -18,10 +18,9 @@ export default function SpaceZonesDashboard({ setZoneData }) {
   const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedZone, setSelectedZone] = useState(null);
-  const [selectedZoneData, setSelectedZoneData] = useState(null);
-  const cardsRef = useRef(null);
-  const starsRef = useRef(null);
+  // selectedZone and selectedZoneData are confirmed unused and will be removed by removing these lines.
+  // const cardsRef = useRef(null); // Already removed as GSAP card animation is replaced
+  // const starsRef = useRef(null); // Already removed as GSAP star animation is replaced
 
   // Static Zone Data with Image URLs
   const staticZones = [
@@ -189,7 +188,7 @@ export default function SpaceZonesDashboard({ setZoneData }) {
 
   // Function to get appropriate icon based on zone name
   const getZoneIcon = (zoneName) => {
-    const iconProps = { className: "w-6 h-6", strokeWidth: 1.5 };
+    const iconProps = { className: "w-6 h-6 text-current", strokeWidth: 1.5 }; // Added text-current for theming
 
     if (zoneName.includes("Command") || zoneName.includes("Control"))
       return <Radar {...iconProps} />;
@@ -198,28 +197,14 @@ export default function SpaceZonesDashboard({ setZoneData }) {
     if (zoneName.includes("External")) return <Orbit {...iconProps} />;
     if (zoneName.includes("Communication")) return <Radio {...iconProps} />;
     if (zoneName.includes("Alert") || zoneName.includes("Emergency"))
-      return <AlertCircle {...iconProps} />;
+      return <AlertCircle {...iconProps} />; // Error/Alert icons might have specific colors later
     if (zoneName.includes("Signal") || zoneName.includes("Transmission"))
       return <Wifi {...iconProps} />;
 
     return <Rocket {...iconProps} />;
   };
 
-  // Create animated stars in the background
-  useEffect(() => {
-    if (starsRef.current) {
-      const stars = starsRef.current.children;
-      gsap.to(stars, {
-        opacity: 0.8,
-        stagger: 0.05,
-        repeat: -1,
-        yoyo: true,
-        duration: 2,
-        ease: "sine.inOut",
-        repeatDelay: 0.5,
-      });
-    }
-  }, []);
+  // GSAP Star animation useEffect is removed
 
   // Initialize zones with API data
   useEffect(() => {
@@ -281,51 +266,21 @@ export default function SpaceZonesDashboard({ setZoneData }) {
 
   // Animate cards when they load
   useEffect(() => {
-    if (!loading && zones.length > 0 && cardsRef.current) {
-      const cards = cardsRef.current.children;
-      gsap.fromTo(
-        cards,
-        {
-          y: 50,
-          opacity: 0,
-        },
-        {
-          y: 0,
-          opacity: 1,
-          stagger: 0.1,
-          duration: 0.8,
-          ease: "power3.out",
-        }
-      );
-    }
+    // GSAP Card loading animation useEffect is removed. Staggering will be handled by Framer Motion variants.
   }, [loading, zones]);
 
-  // Generate random stars for background
-  const generateStars = () => {
-    const stars = [];
-    for (let i = 0; i < 100; i++) {
-      const size = Math.random() * 2 + 1;
-      stars.push(
-        <div
-          key={i}
-          className="absolute rounded-full bg-white opacity-0"
-          style={{
-            width: `${size}px`,
-            height: `${size}px`,
-            top: `${Math.random() * 100}%`,
-            left: `${Math.random() * 100}%`,
-          }}
-        />
-      );
-    }
-    return stars;
+  // GSAP generateStars function is removed. Stars will be generated directly in ModalContent with Framer Motion.
+
+  const listVariants = { // For staggering ZoneCard appearance
+    visible: { transition: { staggerChildren: 0.1 } }, // Adjusted stagger to 0.1 per requirement
+    hidden: {},
   };
 
   return (
-    <div className="h-full min-w-screen bg-transparent text-white py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="h-full min-w-screen bg-transparent text-text-main py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* ISS orbit path */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] border border-[#f48599]/10 rounded-full opacity-20 z-0"></div>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] border border-[#f8b4c0]/10 rounded-full opacity-20 z-0"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] border border-accent-pink/10 rounded-full opacity-20 z-0"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] border border-accent-pink-light/10 rounded-full opacity-20 z-0"></div>
 
       <div className="max-w-7xl mx-auto relative z-10">
         <motion.div
@@ -335,31 +290,31 @@ export default function SpaceZonesDashboard({ setZoneData }) {
           transition={{ duration: 0.8 }}
         >
           <div className="flex items-center mb-4">
-            <Rocket className="w-8 h-8 mr-3 text-[#f48599]" />
+            <Rocket className="w-8 h-8 mr-3 text-accent-pink" /> {/* Verified: uses theme color */}
             <h1 className="text-4xl md:text-5xl font-bold">
-              <span className="bg-gradient-to-r from-[#f05672] to-[#f8b4c0] text-transparent bg-clip-text">
+              <span className="bg-gradient-to-r from-accent-red to-accent-pink-light text-transparent bg-clip-text"> {/* Verified: uses theme colors */}
                 ISS Zones Monitor
               </span>
             </h1>
           </div>
-          <div className="text-[#e6e6e6] text-center max-w-2xl">
+          <div className="text-text-main text-center max-w-2xl">
             <p className="text-sm md:text-base">
               Real-time monitoring system for International Space Station
               modules and zones
             </p>
-            <div className="mt-4 flex items-center justify-center space-x-2 text-xs">
+            <div className="mt-4 flex items-center justify-center space-x-2 text-xs text-text-muted"> {/* text-text-muted for less emphasis */}
               <div className="flex items-center">
-                <div className="w-2 h-2 rounded-full bg-green-400 mr-1 animate-pulse"></div>
+                <div className="w-2 h-2 rounded-full bg-green-400 mr-1.5 animate-pulse"></div> {/* green-400 is fine for status */}
                 <span>Systems Online</span>
               </div>
-              <div className="w-px h-4 bg-[#f48599]/30"></div>
+              <div className="w-px h-4 bg-accent-pink/30"></div>
               <div className="flex items-center">
-                <div className="w-2 h-2 rounded-full bg-[#f48599] mr-1"></div>
+                <div className="w-2 h-2 rounded-full bg-accent-pink mr-1.5"></div>
                 <span>Orbit: LEO</span>
               </div>
-              <div className="w-px h-4 bg-[#f48599]/30"></div>
+              <div className="w-px h-4 bg-accent-pink/30"></div>
               <div className="flex items-center">
-                <div className="w-2 h-2 rounded-full bg-[#f8b4c0] mr-1"></div>
+                <div className="w-2 h-2 rounded-full bg-accent-pink-light mr-1.5"></div>
                 <span>Altitude: 408 km</span>
               </div>
             </div>
@@ -367,32 +322,34 @@ export default function SpaceZonesDashboard({ setZoneData }) {
         </motion.div>
         {/* Loading and Error Handling */}
         {loading ? (
-          <div className="flex justify-center items-center h-64">
+          <div className="flex flex-col justify-center items-center h-64 text-accent-pink"> {/* Themed loader text */}
             <div className="relative w-16 h-16">
-              <div className="absolute inset-0 rounded-full border-2 border-[#f48599]/20 border-t-[#f48599]  animate-spin"></div>
-              <div className="absolute inset-3 rounded-full border-2 border-[#f8b4c0]/20 border-b-[#f8b4c0] animate-spin animation-delay-150"></div>
+              <div className="absolute inset-0 rounded-full border-2 border-accent-pink/20 border-t-accent-pink animate-spin"></div>
+              <div className="absolute inset-3 rounded-full border-2 border-accent-pink-light/20 border-b-accent-pink-light animate-spin animation-delay-150"></div>
             </div>
-            <div className="ml-4 text-[#f48599]">
+            <div className="ml-4 mt-4 text-lg"> {/* Adjusted margin and text size */}
               Establishing connection...
             </div>
           </div>
         ) : error ? (
-          <div className="bg-red-500/20 text-red-200 p-6 rounded-lg text-center border border-red-500/30 max-w-md mx-auto">
-            <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-            <h3 className="text-lg font-semibold mb-1">Connection Error</h3>
-            <p>{error}</p>
-            <p className="text-xs mt-2 text-red-300">
-              Try reestablishing connection to ISS systems
+          <div className="bg-accent-red/10 text-accent-red p-6 rounded-lg text-center border border-accent-red/30 max-w-md mx-auto shadow-lg"> {/* Themed error box */}
+            <AlertCircle className="w-10 h-10 mx-auto mb-3 text-accent-red" /> {/* Verified: uses theme color */}
+            <h3 className="text-xl font-semibold mb-2 text-text-main">Connection Error</h3> {/* Verified: uses theme color */}
+            <p className="text-sm">{error}</p>
+            <p className="text-xs mt-3 text-accent-red/80">
+              Try reestablishing connection to ISS systems.
             </p>
           </div>
         ) : (
           <motion.div
-            ref={cardsRef}
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr"
             layout
+            variants={listVariants}
+            initial="hidden"
+            animate="visible"
           >
-            <AnimatePresence>
-              {zones.map((zone, index) => (
+            <AnimatePresence> 
+              {zones.map((zone) => ( 
                 <ZoneCard
                   key={zone.name}
                   zone={zone}
@@ -419,40 +376,27 @@ function ZoneCard({ zone, icon, index }) {
     status,
   } = zone;
   const statusColor =
-    status === "Nominal" ? "text-green-400" : "text-yellow-400";
+    status === "Nominal" ? "text-green-400" : "text-yellow-400"; // Status colors can remain specific for clarity
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const starsRef = useRef(null);
+  // const starsRef = useRef(null); // GSAP ref removed
 
-  // GSAP Star Animation
-  useEffect(() => {
-    if (isModalOpen && starsRef.current) {
-      const stars = starsRef.current.children;
-      gsap.to(stars, {
-        opacity: 0.8,
-        stagger: 0.05,
-        repeat: -1,
-        yoyo: true,
-        duration: 2,
-        ease: "sine.inOut",
-      });
-    }
-  }, [isModalOpen]);
+  // GSAP Star Animation useEffect is removed.
 
   const cardVariants = {
-    initial: { opacity: 0, y: 50, scale: 0.9 },
+    initial: { opacity: 0, y: 30, scale: 0.95 }, // Slightly adjusted initial state
     animate: {
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { duration: 0.5, ease: "easeOut" },
+      transition: { duration: 0.4, ease: "easeOut" }, // Slightly faster animation
     },
-    exit: {
+    exit: { // Exit animation can be kept if AnimatePresence is used on the list directly
       opacity: 0,
-      y: 50,
-      scale: 0.9,
+      y: -30, // Exit upwards
+      scale: 0.95,
       transition: { duration: 0.3, ease: "easeIn" },
     },
-    hover: { scale: 1.05, transition: { duration: 0.2 } },
+    hover: { scale: 1.04, transition: { duration: 0.2, type: "spring", stiffness: 300 } }, // Springy hover
   };
 
   const ModalContent = () => (
@@ -462,43 +406,54 @@ function ZoneCard({ zone, icon, index }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4" // Darker backdrop, more blur
           onClick={() => setIsModalOpen(false)}
         >
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
+            initial={{ scale: 0.85, opacity: 0 }} // Slightly different initial scale
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }}
-            className="bg-gradient-to-br from-[#15112b] to-[#2a2356] rounded-xl max-w-4xl w-full p-1"
+            exit={{ scale: 0.85, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }} // Spring transition for modal
+            className="bg-gradient-to-br from-nav-bg-start to-nav-bg-alt rounded-xl max-w-4xl w-full p-1 shadow-2xl" // Themed gradient and shadow
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-[#15112b]/90 rounded-xl p-6 backdrop-blur-lg relative overflow-hidden h-[px]">
-              {/* Animated Stars Background */}
-              <div ref={starsRef} className="absolute inset-0 z-0">
+            <div className="bg-nav-bg-start/90 rounded-xl p-6 backdrop-blur-lg relative overflow-hidden"> {/* Adjusted padding, themed bg */}
+              {/* Framer Motion Animated Stars Background */}
+              <div className="absolute inset-0 z-0 overflow-hidden"> {/* Added overflow-hidden */}
                 {Array.from({ length: 50 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="absolute rounded-full bg-white opacity-0"
+                  <motion.div
+                    key={`star-${i}`} // Unique key for stars
+                    className="absolute rounded-full bg-text-main" // Themed star color
                     style={{
-                      width: `${Math.random() * 2 + 1}px`,
-                      height: `${Math.random() * 2 + 1}px`,
+                      width: `${Math.random() * 1.5 + 0.5}px`, 
+                      height: `${Math.random() * 1.5 + 0.5}px`,
                       top: `${Math.random() * 100}%`,
                       left: `${Math.random() * 100}%`,
+                    }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 0.8, 0], scale: [1, 1.1, 1] }} // Adjusted opacity and scale per requirement
+                    transition={{
+                      duration: 2, // Fixed duration per requirement
+                      repeat: Infinity,
+                      delay: Math.random() * 2, // Random delay per requirement
+                      ease: "easeInOut",
                     }}
                   />
                 ))}
               </div>
 
               <div className="relative z-10 h-full flex flex-col">
-                <div className="flex justify-between items-start mb-6">
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-[#f48599] to-[#f8b4c0] bg-clip-text text-transparent">
+                <div className="flex justify-between items-start mb-4"> 
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-accent-pink to-accent-pink-light bg-clip-text text-transparent"> {/* Verified: uses theme colors */}
                     {name}
                   </h2>
-                  <button
+                  <motion.button
                     onClick={() => setIsModalOpen(false)}
-                    className="text-[#f48599] hover:text-[#f8b4c0] transition-colors"
+                    className="text-accent-pink hover:text-accent-pink-light transition-colors p-1 rounded-full hover:bg-text-main/10" // Verified: themed button with hover effect
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9, rotate: 85 }} // Added a slightly different tap effect
                   >
-                    <X className="w-6 h-6" />
+                    <X className="w-6 h-6 text-current" /> {/* Ensured icon uses text-current */}
                   </button>
                 </div>
 
@@ -522,72 +477,72 @@ function ZoneCard({ zone, icon, index }) {
         initial="initial"
         animate="animate"
         exit="exit"
-        layoutId={name}
+        layoutId={name} // Good for shared layout animations if modal was a direct transform
         whileHover="hover"
+        whileTap={{ scale: 0.97, transition: { type: "spring", stiffness: 400 } }} // Added whileTap
       >
-        <div className="bg-gradient-to-br from-[#f48599] to-[#f05672] p-0.5 rounded-xl">
+        <div className="bg-gradient-to-br from-accent-pink to-accent-red p-0.5 rounded-xl shadow-lg"> {/* Themed gradient, added shadow */}
           <motion.div
-            className="bg-[#15112b]/90 backdrop-blur-sm rounded-xl h-full flex flex-col"
-            whileHover={{
-              backgroundColor: "rgba(21, 17, 43, 0.7)",
-              transition: { duration: 0.3 },
-            }}
+            className="bg-nav-bg-start/90 backdrop-blur-md rounded-xl h-full flex flex-col" 
           >
             <img
               src={imageUrl}
               alt={name}
-              className="w-full h-48 object-cover rounded-t-xl"
+              className="w-full h-40 object-cover rounded-t-xl" 
             />
 
-            <div className="p-5 flex-grow">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold text-[#f8b4c0]">
+            <div className="p-4 flex-grow"> 
+              <div className="flex items-center justify-between mb-2"> 
+                <h3 className="text-lg font-semibold text-accent-pink-light"> {/* Verified: theme color */}
                   {name.replace(/_/g, " ")}
                 </h3>
-                <div className="text-[#f48599]">{icon}</div>
+                <div className="text-accent-pink">{icon}</div>{/* Verified: theme color */}
               </div>
 
-              <div className="w-full h-1 bg-gradient-to-r from-[#f05672]/50 to-[#f8b4c0]/50 rounded-full mb-4"></div>
+              <div className="w-full h-px bg-gradient-to-r from-accent-red/50 to-accent-pink-light/50 rounded-full mb-3"></div> {/* Verified: theme colors */}
 
-              <div className="flex-1 space-y-3 text-sm">
+              <div className="flex-1 space-y-2 text-xs"> 
                 <div className="flex justify-between items-center">
-                  <span className="text-[#e6e6e6]/70">Module ID:</span>
-                  <span className="font-mono text-[#f8b4c0]">{moduleId}</span>
+                  <span className="text-text-main/70">Module ID:</span>
+                  <span className="font-mono text-accent-pink-light">{moduleId}</span> {/* Verified: theme colors */}
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[#e6e6e6]/70">Temperature:</span>
-                  <span className="font-mono">{temperature}</span>
+                  <span className="text-text-main/70">Temperature:</span>
+                  <span className="font-mono text-text-main">{temperature}</span> {/* Verified: theme color */}
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[#e6e6e6]/70">Pressure:</span>
-                  <span className="font-mono">{pressure}</span>
+                  <span className="text-text-main/70">Pressure:</span>
+                  <span className="font-mono text-text-main">{pressure}</span> {/* Verified: theme color */}
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[#e6e6e6]/70">Oxygen Level:</span>
-                  <span className="font-mono">{oxygenLevel}</span>
+                  <span className="text-text-main/70">Oxygen Level:</span>
+                  <span className="font-mono text-text-main">{oxygenLevel}</span> {/* Verified: theme color */}
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[#e6e6e6]/70">Status:</span>
-                  <span className={`font-mono ${statusColor}`}>{status}</span>
+                  <span className="text-text-main/70">Status:</span>
+                  <span className={`font-mono ${statusColor}`}>{status}</span> {/* Status color logic is fine */}
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-[#f48599]/20 flex justify-between items-center p-5">
-              <div className="flex items-center">
+            <div className="mt-auto pt-3 border-t border-accent-pink/20 flex justify-between items-center p-4"> {/* Verified: theme color */}
+              <div className="flex items-center text-xs text-text-muted"> 
                 <div
                   className={`w-2 h-2 rounded-full ${
-                    status === "Nominal" ? "bg-green-400" : "bg-yellow-400"
-                  } mr-2`}
+                    status === "Nominal" ? "bg-green-400" : "bg-yellow-400" 
+                  } mr-1.5`}
                 ></div>
-                <span className="text-xs">{status} Report</span>
+                <span>{status} Report</span>
               </div>
-              <button
+              <motion.button
                 onClick={() => setIsModalOpen(true)}
-                className="bg-gradient-to-r from-[#f05672] to-[#f8b4c0] text-white text-sm font-semibold py-2 px-4 rounded-full hover:opacity-80 transition-opacity"
+                className="bg-gradient-to-r from-accent-red to-accent-pink text-text-main text-xs font-semibold py-1.5 px-3 rounded-full shadow-md" // Verified: theme colors
+                whileHover={{ scale: 1.05, filter: "brightness(1.15)" }} // Adjusted brightness
+                whileTap={{ scale: 0.95, filter: "brightness(0.9)" }} // Adjusted brightness
+                transition={{ type: "spring", stiffness: 400, damping: 15 }} // Adjusted spring
               >
                 Details
-              </button>
+              </motion.button>
             </div>
           </motion.div>
         </div>
