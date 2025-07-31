@@ -1,69 +1,78 @@
 generator client {
-    provider = "prisma-client-py"
-    interface = "asyncio"
+  provider  = "prisma-client-py"
+  interface = "asyncio"
 }
 
 datasource db {
-    provider = "mongodb"
-    url      = "mongodb+srv://mantissa6789:Mantis%402510@cluster0.9ramotn.mongodb.net/dbName=iss"
+  provider = "mongodb"
+  url      = "mongodb+srv://mantissa6789:Mantis%402510@cluster0.9ramotn.mongodb.net/dbName=iss"
 }
 
-// wdh
+type LogDetails {
+  fromContainer String
+  reason        String
+  /// Could not determine type: the field only had null or empty values in the sample set.
+  toContainer   Json?
+}
 
-// type Dimensions {
-//     width Int
-//     depth Int
-//     height Int
-// }
+type PlacementEndPos {
+  x Int
+  y Int
+  z Int
+}
 
-model Item {
-    id String @id @default(uuid()) @map("_id")
-    itemId String @unique @map("itemId")
-    name String
-    width Int
-    depth Int
-    height Int
-    mass Int
-    priority Int
-    expiryDate String
-    usageLimit Int
-    preferredZone String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+type PlacementStartPos {
+  x Int
+  y Int
+  z Int
 }
 
 model Container {
-    id String @id @default(uuid()) @map("_id")
-    containerId String @unique @map("containerId")
-    zone String @map("zone")
-    width Int
-    depth Int
-    height Int
-    itemsIds String[]
+  id          String @id @map("_id")
+  containerId String @unique
+  depth       BigInt
+  height      BigInt
+  width       BigInt
+  zone        String
 }
 
-model Zone{
-    id String @id @default(uuid()) @map("_id")
-    name String @map("name")
-    containersIds String[]
-}
-
-model Placement {
-  id  String   @id @default(uuid()) @map("_id")
-  containerId String @map("containerId")
-  itemId      String @map("itemId")
-  startPos    Json
-  endPos      Json
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+model Item {
+  id            String   @id @map("_id")
+  createdAt     DateTime @db.Date
+  depth         BigInt
+  expiryDate    String
+  height        BigInt
+  itemId        String   @unique
+  mass          BigInt
+  name          String
+  preferredZone String
+  priority      BigInt
+  updatedAt     DateTime @db.Date
+  usageLimit    BigInt
+  width         BigInt
 }
 
 model Log {
-  id          String   @id @default(uuid()) @map("_id")
-  timestamp   DateTime @default(now())
-  userId      String
-  actionType  String  
+  id         String     @id @map("_id")
+  actionType String
+  details    LogDetails
+  itemId     String
+  timestamp  DateTime   @db.Date
+  userId     String
+}
+
+model Placement {
+  id          String            @id @map("_id")
+  containerId String
+  createdAt   DateTime          @db.Date
+  endPos      PlacementEndPos
   itemId      String
-  details     Json    
+  startPos    PlacementStartPos
+  updatedAt   DateTime          @db.Date
+}
+
+model Zone {
+  id            String   @id @map("_id")
+  containersIds String[]
+  name          String
 }
