@@ -1179,8 +1179,8 @@ async def get_logs():
         take=3,
         order=[{"timestamp": "desc"}]
     )
-    if not logs:
-        raise HTTPException(status_code=404, detail="No logs found")
+    # if not logs:
+    #     raise HTTPException(status_code=404, detail="No logs found")
 
     log_data = []
     for log in logs:
