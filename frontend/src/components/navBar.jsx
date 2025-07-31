@@ -205,7 +205,7 @@ const SimulateDaysContent = ({
     setError(null);
 
     try {
-      const response = await fetch("https://phydra.onrender.com/api/simulate/day", {
+      const response = await fetch("http://127.0.0.1:5000/api/simulate/day", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -377,9 +377,10 @@ const MsgBoxContent = () => {
     try {
       const { data } = await axios({
         method: "get",
-        url: "https://phydra.onrender.com/api/get-logs",
+        url: "http://127.0.0.1:5000/api/get-logs",
         timeout: 5000, // 5 second timeout
       });
+      console.log(data)
 
       if (data?.success) {
         setLogs(Array.isArray(data.logs) ? data.logs : []);
@@ -574,7 +575,7 @@ const UploadCSVContent = ({ gradient }) => {
                 onChange={(e) =>
                   handleFileUpload(
                     e,
-                    "https://phydra.onrender.com/api/import/containers"
+                    "http://127.0.0.1:5000/api/import/containers"
                   )
                 }
               />
@@ -630,7 +631,7 @@ const UploadCSVContent = ({ gradient }) => {
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 aria-label="Upload items CSV"
                 onChange={(e) =>
-                  handleFileUpload(e, "https://phydra.onrender.com/api/import/items")
+                  handleFileUpload(e, "http://127.0.0.1:5000/api/import/items")
                 }
               />
               <CustomButton

@@ -1175,12 +1175,8 @@ async def logs(request: LogsRequest):
 
 @app.get("/api/get-logs")
 async def get_logs():
-    logs = await prisma.log.find_many(
-        take=3,
-        order=[{"timestamp": "desc"}]
-    )
-    if not logs:
-        raise HTTPException(status_code=404, detail="No logs found")
+    logs = await prisma.log.find_many()
+    print(f"Logs: {logs}")
 
     log_data = []
     for log in logs:
