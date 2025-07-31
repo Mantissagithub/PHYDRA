@@ -135,8 +135,6 @@ We believe in building not just solutions — but delightful experiences.
 
 1. Pradheep - [GitHub](https://github.com/Mantissagithub/)
 2. Harish - [GitHub](https://github.com/HARISH20205)
-3. Dalton - [GitHub](https://github.com/Daltonar05)
-4. Rakshith - [GitHub](https://github.com/RAAKISG)
-5. Yuvanesh - [GitHub](https://github.com/YuvaneshSankar)
-
+3. Yuvanesh - [GitHub](https://github.com/YuvaneshSankar)
+4. Keerthan - [GitHub](https://github.com/Keerthansaai)
 ---
